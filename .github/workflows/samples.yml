@@ -33,7 +33,7 @@ jobs:
 #            docker: public.ecr.aws/ubuntu/ubuntu:20.04_stable
 
         cmake_flags:
-          - AWS_KVS_IPV6_ONLY=ON
+          - "-DAWS_KVS_IPV6_ONLY=ON"
 
       fail-fast: false
 
