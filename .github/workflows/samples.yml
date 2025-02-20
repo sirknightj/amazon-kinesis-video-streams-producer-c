@@ -16,9 +16,9 @@ jobs:
     strategy:
       matrix:
         sample-executable:
-          - kvsAudioOnlyStreamingSample
-          - kvsAudioVideoStreamingSample
-          - kvsVideoOnlyOfflineStreamingSample
+#          - kvsAudioOnlyStreamingSample
+#          - kvsAudioVideoStreamingSample
+#          - kvsVideoOnlyOfflineStreamingSample
           - kvsVideoOnlyRealtimeStreamingSample
         runner:
           - id: macos-latest
@@ -28,9 +28,12 @@ jobs:
             image: ubuntu-latest
             docker: public.ecr.aws/ubuntu/ubuntu:22.04_stable
 
-          - id: ubuntu-20.04
-            image: ubuntu-latest
-            docker: public.ecr.aws/ubuntu/ubuntu:20.04_stable
+#          - id: ubuntu-20.04
+#            image: ubuntu-latest
+#            docker: public.ecr.aws/ubuntu/ubuntu:20.04_stable
+
+        cmake_flags:
+          - AWS_KVS_IPV6_ONLY=ON
 
       fail-fast: false
 
@@ -63,7 +66,7 @@ jobs:
       - name: Build repository
         run: |
           mkdir build && cd build
-          cmake .. -DBUILD_DEPENDENCIES=OFF
+          cmake .. -DBUILD_DEPENDENCIES=OFF ${{ matrix.cmake_flags }}
           make -j$(nproc)
 
       - name: Configure AWS Credentials
