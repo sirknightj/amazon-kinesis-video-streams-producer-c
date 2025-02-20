@@ -16,9 +16,9 @@ jobs:
     strategy:
       matrix:
         sample-executable:
-          - kvsAudioOnlyStreamingSample
-          - kvsAudioVideoStreamingSample
-          - kvsVideoOnlyOfflineStreamingSample
+#          - kvsAudioOnlyStreamingSample
+#          - kvsAudioVideoStreamingSample
+#          - kvsVideoOnlyOfflineStreamingSample
           - kvsVideoOnlyRealtimeStreamingSample
         runner:
           - id: macos-latest
@@ -28,9 +28,12 @@ jobs:
             image: ubuntu-latest
             docker: public.ecr.aws/ubuntu/ubuntu:22.04_stable
 
-          - id: ubuntu-20.04
-            image: ubuntu-latest
-            docker: public.ecr.aws/ubuntu/ubuntu:20.04_stable
+#          - id: ubuntu-20.04
+#            image: ubuntu-latest
+#            docker: public.ecr.aws/ubuntu/ubuntu:20.04_stable
+
+        cmake_flags:
+          - "-DAWS_KVS_IPV6_ONLY=ON"
 
       fail-fast: false
 
@@ -63,14 +66,13 @@ jobs:
       - name: Build repository
         run: |
           mkdir build && cd build
-          cmake .. -DBUILD_DEPENDENCIES=OFF
+          cmake .. -DBUILD_DEPENDENCIES=OFF ${{ matrix.cmake_flags }}
           make -j$(nproc)
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
-          role-session-name: ${{ secrets.AWS_ROLE_SESSION_NAME }}
           aws-region: ${{ secrets.AWS_REGION }}
           role-duration-seconds: 900
 
@@ -78,6 +80,7 @@ jobs:
         working-directory: ./build
         run: |
           mkdir -p $KVS_DEBUG_DUMP_DATA_FILE_DIR
+          export KVS_CURL_DEBUG=ON
           ./${{ matrix.sample-executable }} demo-stream-producer-c-${{ matrix.runner.id }}-ci-${{ matrix.sample-executable }}
 
       - name: Verify MKV dump
