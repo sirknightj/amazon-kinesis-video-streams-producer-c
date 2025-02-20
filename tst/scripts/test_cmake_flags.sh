@@ -36,7 +36,7 @@ for combination in "${COMBINATIONS[@]}"; do
   mkdir build
 
   # Run only the CMake configuration with the current combination
-  cmake -B build $FLAGS -DBUILD_DEPENDENCIES=OFF > /dev/null 2>&1
+  cmake -B build $FLAGS -DBUILD_DEPENDENCIES=OFF
   EXIT_CODE=$?
 
   # Check if the exit code matches the expected result
