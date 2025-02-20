@@ -81,6 +81,7 @@ jobs:
         working-directory: ./build
         run: |
           mkdir -p $KVS_DEBUG_DUMP_DATA_FILE_DIR
+          export KVS_CURL_DEBUG=ON
           ./${{ matrix.sample-executable }} demo-stream-producer-c-${{ matrix.runner.id }}-ci-${{ matrix.sample-executable }}
 
       - name: Verify MKV dump
