@@ -493,11 +493,17 @@ jobs:
 #          echo "Test exited as expected with code $TEST_EXIT_CODE."
 #        shell: bash
   cmake-flags-test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
+    container: public.ecr.aws/ubuntu/ubuntu:22.04_stable
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          apt-get update
+          apt-get -y git cmake build-essential pkg-config libssl-dev libcurl4-openssl-dev
 
       - name: Run CMake Flag Combination Test
         run: |
