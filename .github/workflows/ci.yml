@@ -1,15 +1,15 @@
-#name: Producer C SDK CI
-#
-#on:
-#  push:
-#    branches:
-#      - develop
-#      - master
-#  pull_request:
-#    branches:
-#      - develop
-#      - master
-#jobs:
+name: Producer C SDK CI
+
+on:
+  push:
+    branches:
+      - develop
+      - master
+  pull_request:
+    branches:
+      - develop
+      - master
+jobs:
 #  clang-format-check:
 #    runs-on: macos-latest
 #    steps:
@@ -492,3 +492,13 @@
 #          fi
 #          echo "Test exited as expected with code $TEST_EXIT_CODE."
 #        shell: bash
+  cmake-flags-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run CMake Flag Combination Test
+        run: |
+          ./tst/scripts/test_cmake_flags.sh >> $GITHUB_STEP_SUMMARY
