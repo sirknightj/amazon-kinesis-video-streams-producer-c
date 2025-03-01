@@ -147,7 +147,7 @@ jobs:
           failed=0
           
           while read -r mkvFile; do
-            output=$(../scripts/validate-mkv-containing-tags.sh "$mkvFile".mkv 2>&1)
+            output=$(../scripts/validate-mkv-containing-tags.sh "$mkvFile" 2>&1)
             if [[ $? -ne 0 ]]; then
               echo "$output" >> $GITHUB_STEP_SUMMARY
               failed=1
