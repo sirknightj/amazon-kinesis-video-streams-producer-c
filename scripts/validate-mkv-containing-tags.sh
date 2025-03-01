@@ -149,4 +149,6 @@ if [[ $error -ne 0 ]]; then
   echo "</details>"
 else
   echo "#### ✅ MKV validation succeeded for $file"
+fi
+
 exit $error
