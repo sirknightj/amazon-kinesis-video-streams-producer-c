@@ -142,7 +142,7 @@ jobs:
         working-directory: ./build
         run: |
           while read -r mkvFile; do
-            ../scripts/validate_mkv.sh test.mkv | tee -a "$GITHUB_STEP_SUMMARY"
+            ../scripts/validate-mkv-containing-tags.sh test.mkv | tee -a "$GITHUB_STEP_SUMMARY"
           done < mkv_files.txt
           
           while read -r fragment; do
