@@ -137,3 +137,15 @@ jobs:
             aws kinesis-video-archived-media get-media-for-fragment-list "$fragment".webm --stream-name "$KVS_STREAM_NAME" --endpoint-url "$data_endpoint" --fragments "[\"$fragment\"]" --no-cli-pager
             mkvinfo -v "$fragment".webm
           done < fragments.txt
+
+      - name: Validate MKV structure
+        working-directory: ./build
+        run: |
+          while read -r mkvFile; do
+            ../scripts/validate_mkv.sh test.mkv | tee -a "$GITHUB_STEP_SUMMARY"
+          done < mkv_files.txt
+          
+          while read -r fragment; do
+            ../scripts/validate_mkv.sh "$fragment".webm | tee -a "$GITHUB_STEP_SUMMARY"
+          done < fragments.txt
+          
