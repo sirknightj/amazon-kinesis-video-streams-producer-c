@@ -124,9 +124,7 @@ jobs:
 
       - name: Check persisted fragments
         working-directory: ./build
-        run: |
-          sleep 20 # To let the fragments settle (worst-case scenario)
-                    
+        run: |                    
           # Extract fragments from the log
           grep '"EventType":"PERSISTED"' output.log | awk -F'"FragmentNumber":"' '{print $2}' | awk -F'"' '{print $1}' >> fragments.txt 
           
@@ -134,8 +132,20 @@ jobs:
           
           while read -r fragment; do
             echo "Downloading fragment: $fragment"
-            aws kinesis-video-archived-media get-media-for-fragment-list "$fragment".webm --stream-name "$KVS_STREAM_NAME" --endpoint-url "$data_endpoint" --fragments "[\"$fragment\"]" --no-cli-pager
-            mkvinfo -v "$fragment".webm
+
+            # Retry loop for up to 10 seconds
+            for i in {1..10}; do
+            if aws kinesis-video-archived-media get-media-for-fragment-list \
+                "$fragment".webm --stream-name "$KVS_STREAM_NAME" --endpoint-url "$data_endpoint" \
+                --fragments "[\"$fragment\"]" --no-cli-pager; then
+
+              mkvinfo -v "$fragment".webm
+              break
+            else
+              echo "Fragment $fragment not available yet, retrying in 1s... ($i/10)"
+              sleep 1
+            fi
+            done
           done < fragments.txt
 
       - name: Validate MKV tags
