@@ -126,7 +126,6 @@ if [[ $inside_last_tag_group -eq 1 && $last_tag_group_size -le 1 && $aws_only_ta
     echo "❌ Error: Last tag group (containing AWS_KINESISVIDEO_END_OF_FRAGMENT) doesn't have any user metadata!"
     error=1
 else
-    echo "$inside_last_tag_group $last_tag_group_size $aws_only_tag_group"
     echo "✅ Last tag group has at last one non-AWS_KINESISVIDEO_END_OF_FRAGMENT tag (OK)"
 fi
 
@@ -142,5 +141,6 @@ if [[ $error -ne 0 ]]; then
   echo "\`\`\`"
   mkvinfo -v "$file"
   echo "\`\`\`"
-fi
+else
+  echo "#### ✅ MKV validation succeeded for $file"
 exit $error
