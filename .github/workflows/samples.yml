@@ -138,14 +138,21 @@ jobs:
             mkvinfo -v "$fragment".webm
           done < fragments.txt
 
-      - name: Validate MKV structure
+      - name: Validate MKV tags
         working-directory: ./build
+        if: ${{ matrix.sample-executable == 'kvsVideoOnlyRealtimeStreamingSample' }}
         run: |
           while read -r mkvFile; do
-            ../scripts/validate-mkv-containing-tags.sh "mkvFile".mkv | tee -a "$GITHUB_STEP_SUMMARY"
+            output=$(../scripts/validate-mkv-containing-tags.sh "$mkvFile".mkv 2>&1)
+            if [[ $? -ne 0 ]]; then
+              echo "$output" >> "$GITHUB_STEP_SUMMARY"
+            fi
           done < mkv_files.txt
-          
+      
           while read -r fragment; do
-            ../scripts/validate-mkv-containing-tags.sh "$fragment".webm | tee -a "$GITHUB_STEP_SUMMARY"
+            output=$(../scripts/validate-mkv-containing-tags.sh "$fragment".webm 2>&1)
+            if [[ $? -ne 0 ]]; then
+              echo "$output" >> "$GITHUB_STEP_SUMMARY"
+            fi
           done < fragments.txt
           

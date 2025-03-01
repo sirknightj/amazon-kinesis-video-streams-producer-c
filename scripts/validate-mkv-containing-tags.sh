@@ -138,9 +138,15 @@ fi
 
 if [[ $error -ne 0 ]]; then
   echo "#### ❌ MKV validation failed for $file"
+  echo ""
+  echo "<details>"
+  echo "<summary>$file</summary>"
+  echo ""
   echo "\`\`\`"
   mkvinfo -v "$file"
   echo "\`\`\`"
+  echo ""
+  echo "</details>"
 else
   echo "#### ✅ MKV validation succeeded for $file"
 exit $error
