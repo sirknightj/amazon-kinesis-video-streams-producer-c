@@ -147,6 +147,7 @@ jobs:
           failed=0
           
           while read -r mkvFile; do
+            ../scripts/validate-mkv-containing-tags.sh "$mkvFile"
             output=$(../scripts/validate-mkv-containing-tags.sh "$mkvFile" 2>&1)
             exit_code=$?
             if [[ $exit_code -ne 0 ]]; then
