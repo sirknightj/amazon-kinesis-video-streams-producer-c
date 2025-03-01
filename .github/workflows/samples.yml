@@ -148,7 +148,7 @@ jobs:
           
           while read -r mkvFile; do
             ../scripts/validate-mkv-containing-tags.sh "$mkvFile"
-            output=$(../scripts/validate-mkv-containing-tags.sh "$mkvFile" 2>&1)
+            output="$(../scripts/validate-mkv-containing-tags.sh "$mkvFile" 2>&1)"
             exit_code=$?
             if [[ $exit_code -ne 0 ]]; then
               echo "$output" >> $GITHUB_STEP_SUMMARY
@@ -157,7 +157,7 @@ jobs:
           done < mkv_files.txt
       
           while read -r fragment; do
-            output=$(../scripts/validate-mkv-containing-tags.sh "$fragment".webm 2>&1)
+            output="$(../scripts/validate-mkv-containing-tags.sh "$fragment".webm 2>&1)"
             exit_code=$?
             if [[ $exit_code -ne 0 ]]; then
               echo "$output" >> $GITHUB_STEP_SUMMARY
