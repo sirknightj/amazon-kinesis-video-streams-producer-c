@@ -1,5 +1,4 @@
 #!/bin/bash
-set -x
 set -e -u
 set -o pipefail
 
@@ -52,16 +51,17 @@ while IFS= read -r line; do
           ((tags--))
         fi
 
-        ((clusters++))
+        # In some operating systems, ++ operator returns the new value as the exit code
+        clusters=$((clusters + 1))
         last_was_tag=0
         inside_last_tag_group=0
     elif [[ "$line" =~ "+ Tags" ]]; then
         if [[ $last_was_tag -eq 0 ]]; then
-            ((tags++))
+            tags=$((tags + 1))
             last_tag_group_size=1
             aws_only_tag_group=1
         else
-            ((last_tag_group_size++))
+            last_tag_group_size=$((last_tag_group_size + 1))
         fi
         last_was_tag=1
 
