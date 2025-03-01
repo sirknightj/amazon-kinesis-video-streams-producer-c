@@ -1,0 +1,161 @@
+From 480723b92e8fc1928b72f67c28467fe46230f261 Mon Sep 17 00:00:00 2001
+From: sirknightj <jggunawa@amazon.com>
+Date: Sat, 1 Mar 2025 01:51:34 -0800
+Subject: [PATCH] Persistent metadata fix
+
+---
+ src/client/src/Stream.c      | 42 ++++++++++++++++++++++--------------
+ src/client/src/Stream.h      |  2 ++
+ src/client/src/StreamEvent.c |  3 ++-
+ 3 files changed, 30 insertions(+), 17 deletions(-)
+
+diff --git a/src/client/src/Stream.c b/src/client/src/Stream.c
+index e17c6d3..abdf678 100644
+--- a/src/client/src/Stream.c
++++ b/src/client/src/Stream.c
+@@ -853,7 +853,7 @@ STATUS putFrame(PKinesisVideoStream pKinesisVideoStream, PFrame pFrame)
+         CHK_STATUS(appendValidatedMetadata(pKinesisVideoStream, pSerializedMetadata));
+ 
+         // Package the not-applied metadata as the frame bits
+-        CHK_STATUS(packageStreamMetadata(pKinesisVideoStream, MKV_STATE_START_CLUSTER, TRUE, NULL, &packagedSize));
++        CHK_STATUS(packageStreamMetadata(pKinesisVideoStream, MKV_STATE_START_CLUSTER, FALSE, NULL, &packagedSize));
+     } else {
+         // Get the size of the packaged frame
+         CHK_STATUS(mkvgenPackageFrame(pKinesisVideoStream->pMkvGenerator, pFrame, pTrackInfo, NULL, &packagedSize, &encodedFrameInfo));
+@@ -864,7 +864,7 @@ STATUS putFrame(PKinesisVideoStream pKinesisVideoStream, PFrame pFrame)
+         // Need to handle the metadata if any.
+         // NOTE: The accumulated metadata will be inserted before the fragment start due to MKV limitation
+         // as tags are level 1 and will break MKV clusters.
+-        if (generatorState == MKV_STATE_START_STREAM || generatorState == MKV_STATE_START_CLUSTER) {
++        if (generatorState == MKV_STATE_START_CLUSTER) {
+             // Calculate the size of the metadata first
+             CHK_STATUS(packageStreamMetadata(pKinesisVideoStream, MKV_STATE_START_CLUSTER, FALSE, NULL, &packagedMetadataSize));
+         }
+@@ -899,7 +899,7 @@ STATUS putFrame(PKinesisVideoStream pKinesisVideoStream, PFrame pFrame)
+     // Check if we are packaging special EoFr
+     if (CHECK_FRAME_FLAG_END_OF_FRAGMENT(pFrame->flags)) {
+         // Store the metadata at the beginning of the allocation
+-        CHK_STATUS(packageStreamMetadata(pKinesisVideoStream, MKV_STATE_START_CLUSTER, TRUE, pAlloc, &packagedSize));
++        CHK_STATUS(packageStreamMetadata(pKinesisVideoStream, MKV_STATE_START_CLUSTER, FALSE, pAlloc, &packagedSize));
+ 
+         // Synthesize the encodedFrameInfo
+         CHK_STATUS(mkvgenGetCurrentTimestamps(pKinesisVideoStream->pMkvGenerator, &encodedFrameInfo.streamStartTs, &encodedFrameInfo.clusterPts,
+@@ -1294,6 +1294,15 @@ STATUS getStreamData(PKinesisVideoStream pKinesisVideoStream, UPLOAD_HANDLE uplo
+         // Next, we need to check whether we have an allocation handle.
+         // This could happen in case when we start getting the data out or
+         // when the last time we got the data the item fell off the view window.
++
++        if (IS_UPLOAD_HANDLE_IN_SENDING_EOS_STATE(pUploadHandleInfo) && !pUploadHandleInfo->finalMetadataChecked && !pKinesisVideoStream->streamStopped) {
++            packageNotSentMetadata(pKinesisVideoStream);
++
++            pUploadHandleInfo->finalMetadataChecked = TRUE;
++            CHK(FALSE, retStatus);
++        }
++
++
+         if (IS_UPLOAD_HANDLE_IN_SENDING_EOS_STATE(pUploadHandleInfo) && pKinesisVideoStream->metadataTracker.send) {
+             // Check if we have finished sending the packaged metadata and reset the values
+             if (pKinesisVideoStream->metadataTracker.offset == pKinesisVideoStream->metadataTracker.size) {
+@@ -3152,17 +3161,17 @@ STATUS checkForNotSentMetadata(PKinesisVideoStream pKinesisVideoStream, PBOOL pN
+         pSerializedMetadata = (PSerializedMetadata) data;
+         CHK(pSerializedMetadata != NULL, STATUS_INTERNAL_ERROR);
+ 
+-        // Check if the metadata has been "applied" which means it has been already packaged.
+-        // This could happen in case when the metadata has been added after the fragment start
+-        // and/or a persistent metadata value has been modified after the fragment start.
+-        if (!pSerializedMetadata->applied) {
++//        // Check if the metadata has been "applied" which means it has been already packaged.
++//        // This could happen in case when the metadata has been added after the fragment start
++//        // and/or a persistent metadata value has been modified after the fragment start.
++//        if (!pSerializedMetadata->applied) {
+             *pNotSent = TRUE;
+ 
+-            // Early return
++//            // Early return
+             CHK(FALSE, retStatus);
+-        }
+-
+-        CHK_STATUS(stackQueueIteratorNext(&iterator));
++//        }
++//
++//        CHK_STATUS(stackQueueIteratorNext(&iterator));
+     }
+ 
+ CleanUp:
+@@ -3173,6 +3182,7 @@ CleanUp:
+ 
+ STATUS packageNotSentMetadata(PKinesisVideoStream pKinesisVideoStream)
+ {
++    DLOGE("Package not sent metadata!!!!");
+     ENTERS();
+     STATUS retStatus = STATUS_SUCCESS;
+     StackQueueIterator iterator;
+@@ -3192,10 +3202,10 @@ STATUS packageNotSentMetadata(PKinesisVideoStream pKinesisVideoStream)
+         pSerializedMetadata = (PSerializedMetadata) data;
+         CHK(pSerializedMetadata != NULL, STATUS_INTERNAL_ERROR);
+ 
+-        // Check to see if the metadata has not been applied and account for the size.
+-        if (!pSerializedMetadata->applied) {
++//        // Check to see if the metadata has not been applied and account for the size.
++//        if (!pSerializedMetadata->applied) {
+             allocSize += pSerializedMetadata->packagedSize;
+-        }
++//        }
+ 
+         CHK_STATUS(stackQueueIteratorNext(&iterator));
+     }
+@@ -3212,7 +3222,7 @@ STATUS packageNotSentMetadata(PKinesisVideoStream pKinesisVideoStream)
+         pSerializedMetadata = (PSerializedMetadata) data;
+         CHK(pSerializedMetadata != NULL, STATUS_INTERNAL_ERROR);
+ 
+-        if (!pSerializedMetadata->applied) {
++//        if (!pSerializedMetadata->applied) {
+             packagedSize = allocSize;
+             if (pSerializedMetadata->parent == MKV_TREE_TAGS) {
+                 if (tagsFound) {
+@@ -3243,7 +3253,7 @@ STATUS packageNotSentMetadata(PKinesisVideoStream pKinesisVideoStream)
+ 
+         // The item is the allocation so free it
+         MEMFREE(pSerializedMetadata);
+-    }
++//    }
+     if (tagsFound) {
+         CHK_STATUS(mkvgenIncreaseTagsTagSize(tagsStart, simpleSizes));
+     }
+diff --git a/src/client/src/Stream.h b/src/client/src/Stream.h
+index 8e9022b..0ef28e0 100644
+--- a/src/client/src/Stream.h
++++ b/src/client/src/Stream.h
+@@ -323,6 +323,8 @@ struct __UploadHandleInfo {
+     // The creation time of the upload handle for diagnostics calculations
+     UINT64 createTime;
+ 
++    BOOL finalMetadataChecked;
++
+     // Handle state
+     UPLOAD_HANDLE_STATE state;
+ };
+diff --git a/src/client/src/StreamEvent.c b/src/client/src/StreamEvent.c
+index ae4b546..da4f4df 100644
+--- a/src/client/src/StreamEvent.c
++++ b/src/client/src/StreamEvent.c
+@@ -413,7 +413,7 @@ STATUS getStreamingTokenResult(PKinesisVideoStream pKinesisVideoStream, SERVICE_
+         CHK(expiration > currentTime && (expiration - currentTime) >= MIN_STREAMING_TOKEN_EXPIRATION_DURATION, STATUS_INVALID_TOKEN_EXPIRATION);
+ 
+         // Ensure that we rotate before the max period is enforced
+-        pKinesisVideoStream->streamingAuthInfo.expiration = MIN(expiration, currentTime + MAX_ENFORCED_TOKEN_EXPIRATION_DURATION);
++        pKinesisVideoStream->streamingAuthInfo.expiration = MIN(expiration, currentTime + MIN_STREAMING_TOKEN_EXPIRATION_DURATION);
+ 
+         // Introduce jitter to the expiration time
+         pKinesisVideoStream->streamingAuthInfo.expiration =
+@@ -553,6 +553,7 @@ STATUS putStreamResult(PKinesisVideoStream pKinesisVideoStream, SERVICE_CALL_RES
+         pUploadHandleInfo->lastFragmentTs = INVALID_TIMESTAMP_VALUE;
+         pUploadHandleInfo->timestamp = INVALID_TIMESTAMP_VALUE;
+         pUploadHandleInfo->lastPersistedAckTs = INVALID_TIMESTAMP_VALUE;
++        pUploadHandleInfo->finalMetadataChecked = FALSE;
+         pUploadHandleInfo->state = UPLOAD_HANDLE_STATE_NEW;
+ 
+         pUploadHandleInfo->createTime = pKinesisVideoClient->clientCallbacks.getCurrentTimeFn(pKinesisVideoClient->clientCallbacks.customData);
+-- 
+2.39.0
+

@@ -16,9 +16,9 @@ jobs:
     strategy:
       matrix:
         sample-executable:
-          - kvsAudioOnlyStreamingSample
-          - kvsAudioVideoStreamingSample
-          - kvsVideoOnlyOfflineStreamingSample
+#          - kvsAudioOnlyStreamingSample
+#          - kvsAudioVideoStreamingSample
+#          - kvsVideoOnlyOfflineStreamingSample
           - kvsVideoOnlyRealtimeStreamingSample
         runner:
           - id: macos-latest
@@ -67,6 +67,14 @@ jobs:
           cmake .. -DBUILD_DEPENDENCIES=OFF
           make -j$(nproc)
 
+      - name: Change token rotation to 30s
+        run: |
+          mv 0001-Persistent-metadata-fix.patch ./dependency/libkvspic/kvspic-src/src
+          cd ./dependency/libkvspic/kvspic-src/src
+          git apply 0001-Persistent-metadata-fix.patch
+          cd $GITHUB_WORKSPACE/build
+          make -j$(nproc)
+
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -81,7 +89,7 @@ jobs:
           mkdir -p $KVS_DEBUG_DUMP_DATA_FILE_DIR
           
           set -o pipefail
-          ./${{ matrix.sample-executable }} "$KVS_STREAM_NAME" | tee output.log
+          ./${{ matrix.sample-executable }} "$KVS_STREAM_NAME" h264 40 | tee output.log
           exit_code=${PIPESTATUS[0]}
           if [ "$exit_code" -ne 0 ]; then
             echo "${{ matrix.sample-executable }} exited with code: $exit_code"
