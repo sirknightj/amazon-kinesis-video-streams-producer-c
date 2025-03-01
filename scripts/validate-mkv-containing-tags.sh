@@ -19,6 +19,11 @@ set -e
 
 file="$1"
 
+if [[ ! -f "$file" ]]; then
+    echo "$file not found!"
+    exit 1
+fi
+
 clusters=0                   # Count of clusters in the MKV
 tags=0                       # Count of user tag groups in the MKV
 last_was_tag=0               # If the previous element is a tag (used to de-duplicate tag groups)
