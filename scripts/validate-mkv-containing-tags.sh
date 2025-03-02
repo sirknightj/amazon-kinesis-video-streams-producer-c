@@ -15,141 +15,222 @@ set -o pipefail
 # Usage: ./validate-mkv-containing-tags.sh <MKV filePath>
 #  - Must have mkvinfo (mkvtoolnix) installed
 
-set -e
+verify_mkvinfo_installed() {
+    if ! command -v mkvinfo &> /dev/null; then
+        echo "❌ Error: mkvinfo is not installed! Please install \`mkvtoolnix\`."
+        exit 1
+    fi
+}
 
-file="$1"
+verify_mkv_file() {
+    local file=$1
 
-if [[ ! -f "$file" ]]; then
-    echo "$file not found!"
-    exit 1
-fi
-
-clusters=0                   # Count of clusters in the MKV
-tags=0                       # Count of user tag groups in the MKV
-last_was_tag=0               # If the previous element is a tag (used to de-duplicate tag groups)
-last_tag_group_size=0        # Number of tags in the final tag group in the MKV
-first_element=""             # Either cluster, or non-service metadata tag group
-last_element=""              # Either cluster, or tag, whichever comes last in the MKV
-inside_last_tag_group=0      # If the last group has "AWS_KINESISVIDEO_END_OF_FRAGMENT"
-aws_only_tag_group=0         # If the current tag group only has tag keys starting with 'AWS_' (e.g. AWS_KINESISVIDEO_FRAGMENT_NUMBER)
-valid_tag_group_found=0      # If there is at least 1 user metadata tags tag group
-non_user_metadata_cluster=0  # If there is a tag group containing all 'AWS_'-prefixed keys
-
-echo "### MKV Structure Validation for $file 🚀"
-
-while IFS= read -r line; do
-    if [[ -z "$first_element" && ("$line" =~ "+ Cluster" || "$line" =~ "+ Tags") ]]; then
-        first_element="$line"
+    if [[ ! -f "$file" ]]; then
+        echo "❌ Error: $file not found!"
+        exit 1
     fi
 
-    if [[ "$line" =~ "|+" ]]; then
-        last_element="$line"
+    if [[ ! -s "$file" ]]; then
+        echo "❌ Error: $file is empty!"
+        exit 1
     fi
 
-    if [[ "$line" =~ "|+ Cluster" ]]; then
-        if [[ "$aws_only_tag_group" -eq 1 ]]; then
-          ((tags--))
+    if ! mkvinfo -v "$file" &> /dev/null; then
+        echo "❌ Error: $file is not a valid MKV file or cannot be parsed by \`mkvinfo\`."
+        exit 1
+    fi
+}
+
+detect_mkv_type() {
+    local mkvinfo_output=$1
+
+    if echo "$mkvinfo_output" | grep -q "|   + Name: AWS_" && ! echo "$mkvinfo_output" | grep -q "|   + Name: AWS_KINESISVIDEO_END_OF_FRAGMENT"; then
+        echo "**MKV type:** persisted MKV"
+    else
+        echo "**MKV type:** SDK-generated MKV"
+    fi
+}
+
+validate_clusters_followed_by_tags() {
+    local mkvinfo_output=$1
+    local clusters=$(echo "$mkvinfo_output" | grep -c "|+ Cluster")
+    local clusters_followed_by_tags=$(echo "$mkvinfo_output" | grep -e "|+ Cluster" -e "|+ Tags" | tr '\n' ' ' | grep -o "|+ Cluster |+ Tags" | wc -l)
+
+    if [[ "$clusters" -ne "$clusters_followed_by_tags" ]]; then
+        echo "❌ Error: Not every Cluster is followed by a Tags section!"
+        return 1
+    fi
+    echo "✅ Every Cluster is followed by Tags (OK)"
+    return 0
+}
+
+validate_clusters_come_first() {
+    local mkvinfo_output=$1
+    while IFS= read -r line; do
+        if [[ "$line" =~ "|+ Cluster" ]]; then
+            echo "✅ Clusters detected first (OK)"
+            return 0
+        elif [[ "$line" =~ "|+ Tags" ]]; then
+            echo "❌ Error: Tags appear before Clusters!"
+            return 1
         fi
-
-        # In some operating systems, ++ operator returns the new value as the exit code
-        clusters=$((clusters + 1))
-        last_was_tag=0
-        inside_last_tag_group=0
-    elif [[ "$line" =~ "+ Tags" ]]; then
-        if [[ $last_was_tag -eq 0 ]]; then
-            tags=$((tags + 1))
-            last_tag_group_size=1
-            aws_only_tag_group=1
-        else
-            last_tag_group_size=$((last_tag_group_size + 1))
-        fi
-        last_was_tag=1
-
-    elif [[ "$line" =~ "AWS_KINESISVIDEO_END_OF_FRAGMENT" ]]; then
-        inside_last_tag_group=1
-
-    elif [[ "$line" =~ "|   + Name" ]]; then
-        if [[ ! "$line" =~ "AWS_" ]]; then
-            aws_only_tag_group=0
-        else
-            non_user_metadata_cluster=1
-            first_element=""
-        fi
-
-    elif [[ ! "$line" =~ "+ Tag" && ! "$line" =~ "+ Simple" && ! "$line" =~ "+ Name" && ! "$line" =~ "+ String" ]]; then
-        last_was_tag=0
-    fi
-
-    if [[ $aws_only_tag_group -eq 0 ]]; then
-        valid_tag_group_found=1
-    fi
-done < <(mkvinfo -v "$file" 2>/dev/null)
-
-if [[ non_user_metadata_cluster -eq 1 ]]; then
-  echo "**MKV type:** persisted MKV"
-else
-  echo "**MKV type:** SDK-generated MKV"
-fi
-
-echo "**Clusters Found:** $clusters"
-echo "**Tags Found:** $tags"
-
-error=0
-
-if [[ "$first_element" =~ "Tags" ]]; then
-    echo "❌ Error: Tags appear before any Cluster!"
-    echo "$first_element"
-    error=1
-else
-    echo "✅ Tags appear after Clusters (OK)"
-fi
-
-if [[ ! "$last_element" =~ "Tags" ]]; then
-    echo "❌ Error: Last section is not Tags!"
-    error=1
-else
-    echo "✅ Last section is Tags (OK)"
-fi
-
-if [[ $clusters -eq 0 ]]; then
+    done <<< "$mkvinfo_output"
     echo "❌ Error: No Clusters found! Invalid MKV structure?"
-    error=1
-else
-    echo "✅ Clusters detected (OK)"
-fi
+    return 1
+}
 
-if [[ $tags -gt $clusters ]]; then
-    echo "❌️ Warning: More tags than clusters."
-fi
+validate_last_tag_group_has_two_tags() {
+    local mkvinfo_output=$1
+    local end_of_fragment_tags=$(echo "$mkvinfo_output" | grep -c "+ Name: AWS_KINESISVIDEO_END_OF_FRAGMENT")
 
-# Last tag group only contains AWS_KINESISVIDEO_END_OF_FRAGMENT
-if [[ $inside_last_tag_group -eq 1 && $last_tag_group_size -le 1 && $aws_only_tag_group -eq 1 ]]; then
-    echo "❌ Error: Last tag group (containing AWS_KINESISVIDEO_END_OF_FRAGMENT) doesn't have any user metadata!"
-    error=1
-else
-    echo "✅ Last tag group has at last one non-AWS_KINESISVIDEO_END_OF_FRAGMENT tag (OK)"
-fi
+    if [[ "$end_of_fragment_tags" -ne 1 ]]; then
+        echo "❌ Error: Missing \`AWS_KINESISVIDEO_END_OF_FRAGMENT\`"
+        return 1
+    fi
+    echo "✅ Contains \`AWS_KINESISVIDEO_END_OF_FRAGMENT\` (OK)"
 
-if [[ $valid_tag_group_found -eq 0 ]]; then
-    echo "❌ Error: No user metadata tags found! All the tag keys start with 'AWS_'"
-    error=1
-else
-    echo "✅ Located user metadata tags."
-fi
+    local current_tag_count=0
+    while IFS= read -r line; do
+        if [[ "$line" =~ "AWS_KINESISVIDEO_END_OF_FRAGMENT" ]]; then
+            if [[ $current_tag_count -lt 2 ]]; then
+                echo "❌ Error: Last tag group (containing AWS_KINESISVIDEO_END_OF_FRAGMENT) doesn't have at least two tags!"
+                return 1
+            fi
+        elif [[ "$line" =~ "|+ Tags" ]]; then
+            current_tag_count+=1
+        elif [[ $"line" =~ "|+ Cluster" ]]; then
+            current_tag_count=0
+        fi
+    done <<< "$mkvinfo_output" | grep -e "|+ Cluster" -e "|+ Tags"
+    echo "✅ Last tags group has at least two Tags (OK)"
+    return 0
+}
 
-if [[ $error -ne 0 ]]; then
-  echo "#### ❌ MKV validation failed for $file"
-  echo ""
-  echo "<details>"
-  echo "<summary>$file</summary>"
-  echo ""
-  echo "\`\`\`"
-  mkvinfo -v "$file"
-  echo "\`\`\`"
-  echo ""
-  echo "</details>"
-else
-  echo "#### ✅ MKV validation succeeded for $file"
-fi
+validate_exactly_one_cluster() {
+    local mkvinfo_output=$1
+    local clusters=$(echo "$mkvinfo_output" | grep -c "|+ Cluster")
 
-exit $error
+    if [[ "$clusters" -ne 1 ]]; then
+        echo "❌ Error: There is more than 1 Cluster! (Are you sure this is persisted MKV?)"
+        return 1
+    fi
+    echo "✅ There is exactly 1 Cluster (OK)"
+    return 0
+}
+
+validate_two_tag_groups() {
+    local mkvinfo_output=$1
+    local tags_before_clusters=$(echo "$mkvinfo_output" | grep -e "|+ Cluster" -e "|+ Tags" | tr '\n' ' ' | grep -o "|+ Tags |+ Cluster" | wc -l)
+    local clusters_followed_by_tags=$(echo "$mkvinfo_output" | grep -e "|+ Cluster" -e "|+ Tags" | tr '\n' ' ' | grep -o "|+ Cluster |+ Tags" | wc -l)
+
+    if [[ "$tags_before_clusters" -ne 1 ]]; then
+        echo "❌ Error: Missing Tags before the Cluster!"
+        return 1
+    fi
+
+    if [[ "$clusters_followed_by_tags" -ne 1 ]]; then
+        echo "❌ Error: Missing Tags after the Cluster!"
+        return 1
+    fi
+
+    echo "✅ The Cluster is surrounded by Tags (OK)"
+    return 0
+}
+
+validate_first_tag_group_is_aws_metadata() {
+    local mkvinfo_output=$1
+    local tags_before_cluster=$(echo "$mkvinfo_output" | grep -A 200 "|+ Tags" | grep -B 200 "|+ Cluster" | grep -e " + Name:")
+    local aws_metadata_tags=$(echo "$tags_before_cluster" | grep -c "AWS_")
+    local tags_before_cluster_count=$(echo "$tags_before_cluster" | wc -l)
+
+    if [[ "$tags_before_cluster_count" -ne "$aws_metadata_tags" ]]; then
+        echo "❌ Error: There are extra Tags before the Cluster!"
+        return 1
+    fi
+
+    echo "✅ The Cluster is has AWS metadata Tags before it (OK)"
+    return 0
+}
+
+validate_last_tag_group_is_user_metadata() {
+    local mkvinfo_output=$1
+    local tags_after_cluster=$(echo "$mkvinfo_output" | grep -A 99999 "|+ Cluster" | grep -e " + Name:")
+    local aws_metadata_tags=$(echo "$tags_after_cluster" | grep -c "AWS_")
+
+    if [[ $(echo "$tags_after_cluster" | wc -l) -eq 0 ]]; then
+        echo "❌ Error: There are no Tags after the Cluster!"
+        return 1
+    fi
+
+    if [[ "$aws_metadata_tags" -ne 0 ]]; then
+        echo "❌ Error: There are AWS metadata Tags after the Cluster!"
+        return 1
+    fi
+
+    echo "✅ Tags after the Cluster are fragment metadata Tags (OK)"
+    return 0
+}
+
+verify_file() {
+    local file=$1
+    verify_mkv_file "$file"
+
+    echo "### MKV Structure Validation for $file 🚀"
+
+    local mkvinfo_output=$(mkvinfo -v "$file" 2>/dev/null)
+
+    local mkv_type=$(detect_mkv_type "$mkvinfo_output")
+    echo "$mkv_type"
+
+    local error=0
+    validate_clusters_followed_by_tags "$mkvinfo_output" || error=1
+
+    if [[ "$mkv_type" == "**MKV type:** SDK-generated MKV" ]]; then
+        validate_clusters_come_first "$mkvinfo_output" || error=1
+        validate_last_tag_group_has_two_tags "$mkvinfo_output" || error=1
+    else
+        validate_exactly_one_cluster "$mkvinfo_output" || error=1
+        validate_two_tag_groups "$mkvinfo_output" || error=1
+        validate_first_tag_group_is_aws_metadata "$mkvinfo_output" || error=1
+        validate_last_tag_group_is_user_metadata "$mkvinfo_output" || error=1
+    fi
+
+    if [[ $error -ne 0 ]]; then
+        echo "#### ❌ MKV validation failed for $file"
+        echo ""
+        echo "<details>"
+        echo "<summary>$file</summary>"
+        echo ""
+        echo "\`\`\`"
+        echo "$mkvinfo_output"
+        echo "\`\`\`"
+        echo ""
+        echo "</details>"
+    else
+        echo "#### ✅ MKV validation succeeded for $file"
+    fi
+
+    return $error
+}
+
+main() {
+    if [[ "$#" -lt 1 || "$@" == "-h" || "$@" == "--help" ]]; then
+        echo "Amazon KVS MKV Fragment Metadata Validator"
+        echo "Validates MKVs containing fragment metadata generated by the KVS Producer SDK, or a fragment downloaded from KVS"
+        echo "Outputs a report in Markdown"
+        echo ""
+        echo "Usage: $0 <file1> [file2] [file3] ..."
+        exit 1
+    fi
+
+    verify_mkvinfo_installed
+
+    local overall_error=0
+    for file_name in "$@"; do
+        verify_file "$file_name" || overall_error=1
+    done
+
+    exit $overall_error
+}
+
+main "$@"
