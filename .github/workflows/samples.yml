@@ -12,13 +12,13 @@ on:
 
 jobs:
   sample-checks:
-    name: ${{ matrix.runner.id }} - persist=${{ matrix.persist }}, add-before=${{ matrix.add-before }}
+    name: ${{ matrix.runner.id }} - persist=${{ matrix.persistent }}, add-before=${{ matrix.add-before }}
     strategy:
       matrix:
         sample-executable:
-#          - kvsAudioOnlyStreamingSample
-#          - kvsAudioVideoStreamingSample
-#          - kvsVideoOnlyOfflineStreamingSample
+          #          - kvsAudioOnlyStreamingSample
+          #          - kvsAudioVideoStreamingSample
+          #          - kvsVideoOnlyOfflineStreamingSample
           - kvsVideoOnlyRealtimeStreamingSample
 
         persistent:
@@ -114,7 +114,7 @@ jobs:
           
           sleep 45 && kill -9 $pid 2>/dev/null && echo "${{ matrix.sample-executable }} timed out and was killed" &  
           watchdog=$!
-               
+          
           # Wait for the sample executable to finish  
           wait $pid  
           exit_code=$?
@@ -125,7 +125,7 @@ jobs:
           exit_code=${PIPESTATUS[0]}
           if [ "$exit_code" -ne 0 ]; then
             echo "${{ matrix.sample-executable }} exited with code: $exit_code"
-#            exit 1
+            # exit 1
           fi
         shell: bash
 
@@ -164,7 +164,7 @@ jobs:
 
       - name: Check persisted fragments
         working-directory: ./build
-        run: |                    
+        run: |
           # Extract fragments from the log
           grep '"EventType":"PERSISTED"' output.log | awk -F'"FragmentNumber":"' '{print $2}' | awk -F'"' '{print $1}' >> fragments.txt 
           
@@ -202,7 +202,7 @@ jobs:
               failed=1
             fi
           done < mkv_files.txt
-      
+          
           while read -r fragment; do
             output="$(../scripts/validate-mkv-containing-tags.sh "$fragment".webm 2>&1)"
             exit_code=$?
