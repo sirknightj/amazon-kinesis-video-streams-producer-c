@@ -128,6 +128,9 @@ jobs:
             echo "${{ matrix.sample-executable }} exited with code: $exit_code"
             # exit 1
           fi
+          
+          echo "Debug directory:"
+          ls -tlahr $KVS_DEBUG_DUMP_DATA_FILE_DIR
         shell: bash
 
       - name: Save MKV file list

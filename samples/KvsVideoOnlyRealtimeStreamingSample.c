@@ -195,28 +195,23 @@ INT32 main(INT32 argc, CHAR* argv[])
         frame.flags = fileIndex % DEFAULT_KEY_FRAME_INTERVAL == 0 ? FRAME_FLAG_KEY_FRAME : FRAME_FLAG_NONE;
         frame.size = SIZEOF(frameBuffer);
 
-        // Save network bandwidth
-        if (frame.index <= 25 || frame.index >= 676) {
-            CHK_STATUS(readFrameData(&frame, frameFilePath, videoCodec));
+        CHK_STATUS(readFrameData(&frame, frameFilePath, videoCodec));
 
-            CHK_STATUS(putKinesisVideoFrame(streamHandle, &frame));
-            if (firstFrame) {
-                startUpLatency = (DOUBLE) (GETTIME() - startTime) / (DOUBLE) HUNDREDS_OF_NANOS_IN_A_MILLISECOND;
-                DLOGD("Start up latency: %lf ms", startUpLatency);
-                firstFrame = FALSE;
-            }
+        CHK_STATUS(putKinesisVideoFrame(streamHandle, &frame));
+        if (firstFrame) {
+            startUpLatency = (DOUBLE) (GETTIME() - startTime) / (DOUBLE) HUNDREDS_OF_NANOS_IN_A_MILLISECOND;
+            DLOGD("Start up latency: %lf ms", startUpLatency);
+            firstFrame = FALSE;
         }
         defaultThreadSleep(frame.duration);
 
         // Add the fragment metadata key-value pairs
         // For limits, refer to https://docs.aws.amazon.com/kinesisvideostreams/latest/dg/limits.html#limits-streaming-metadata
         if (frame.flags == FRAME_FLAG_KEY_FRAME) {
-            if (frame.index <= 25 || frame.index >= 676) {
-                for (n = 1; n <= numMetadata; n++) {
-                    SNPRINTF(metadataKey, METADATA_MAX_KEY_LENGTH, "TEST_KEY_%d", n);
-                    SNPRINTF(metadataValue, METADATA_MAX_VALUE_LENGTH, "TEST_VALUE_%d", frame.index + n);
-                    CHK_STATUS(putKinesisVideoFragmentMetadata(streamHandle, metadataKey, metadataValue, shouldBePersistent));
-                }
+            for (n = 1; n <= numMetadata; n++) {
+                SNPRINTF(metadataKey, METADATA_MAX_KEY_LENGTH, "TEST_KEY_%d", n);
+                SNPRINTF(metadataValue, METADATA_MAX_VALUE_LENGTH, "TEST_VALUE_%d", frame.index + n);
+                CHK_STATUS(putKinesisVideoFragmentMetadata(streamHandle, metadataKey, metadataValue, shouldBePersistent));
             }
         }
 

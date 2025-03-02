@@ -97,7 +97,8 @@ validate_last_tag_group_has_two_tags() {
                 return 1
             fi
         elif [[ "$line" =~ "|+ Tags" ]]; then
-            current_tag_count+=1
+            # Don't use ++ since it returns code 1 when var is 0
+            current_tag_count=$((current_tag_count + 1))
         elif [[ $"line" =~ "|+ Cluster" ]]; then
             current_tag_count=0
         fi
