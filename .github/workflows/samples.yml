@@ -109,6 +109,7 @@ jobs:
             export addMetadataBefore=1
           fi 
           
+          set +e # disable exit on error
           ./${{ matrix.sample-executable }} "$KVS_STREAM_NAME" h264 35 | tee output.log &  
           pid=$!
           
