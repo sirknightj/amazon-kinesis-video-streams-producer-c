@@ -50,7 +50,7 @@ jobs:
       AWS_KVS_LOG_LEVEL: 2
       KVS_DEBUG_DUMP_DATA_FILE_DIR: ./debug_output
       DEBIAN_FRONTEND: noninteractive
-      KVS_STREAM_NAME: demo-stream-producer-c-${{ matrix.runner.id }}-ci-${{ matrix.sample-executable }}
+      KVS_STREAM_NAME: demo-stream-producer-c-${{ matrix.runner.id }}-ci-${{ matrix.sample-executable }}-pers-${{ matrix.persistent }}-ab-${{ matrix.add-before }}
 
     permissions:
       id-token: write
@@ -136,6 +136,9 @@ jobs:
       - name: Save MKV file list
         working-directory: ./build
         run: |
+          echo "Debug directory:"
+          ls -tlahr $KVS_DEBUG_DUMP_DATA_FILE_DIR
+          
           FILE_LIST=$(find "$KVS_DEBUG_DUMP_DATA_FILE_DIR" -type f -name "*.mkv" -size +0c 2>/dev/null)
           if [ -z "$FILE_LIST" ]; then
             echo "No MKV files found in $KVS_DEBUG_DUMP_DATA_FILE_DIR"
@@ -196,6 +199,7 @@ jobs:
         working-directory: ./build
         if: ${{ matrix.sample-executable == 'kvsVideoOnlyRealtimeStreamingSample' }}
         run: |
+          set -x
           failed=0
           
           while read -r mkvFile; do
