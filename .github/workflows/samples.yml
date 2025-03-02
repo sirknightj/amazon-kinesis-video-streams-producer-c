@@ -101,11 +101,11 @@ jobs:
           
           set -o pipefail
           
-          if [[ "${{ matrix.persistent }}" == "true" ]; then
+          if [[ "${{ matrix.persistent }}" == "true" ]]; then
             export shouldBePersistent=1
           fi
           
-          if [[ "${{ matrix.add-before }}" == "true" ]; then
+          if [[ "${{ matrix.add-before }}" == "true" ]]; then
             export addMetadataBefore=1
           fi 
           
