@@ -181,3 +181,4 @@ jobs:
           done < fragments.txt
           
           exit $failed
+        shell: bash
