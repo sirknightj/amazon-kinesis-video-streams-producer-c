@@ -1,0 +1,167 @@
+From 972c657197a274264679fe8bc05d225d39d3eac1 Mon Sep 17 00:00:00 2001
+From: sirknightj <jggunawa@amazon.com>
+Date: Sun, 2 Mar 2025 00:40:59 -0800
+Subject: [PATCH 2/2] Fix for nonpersistent metadata too
+
+---
+ src/client/src/Stream.c | 74 +++++++++++++++++++++++++++++++++++------
+ src/client/src/Stream.h |  2 ++
+ 2 files changed, 66 insertions(+), 10 deletions(-)
+
+diff --git a/src/client/src/Stream.c b/src/client/src/Stream.c
+index abdf678..85cd2a0 100644
+--- a/src/client/src/Stream.c
++++ b/src/client/src/Stream.c
+@@ -846,6 +846,8 @@ STATUS putFrame(PKinesisVideoStream pKinesisVideoStream, PFrame pFrame)
+     // Not right now as we need to deal with mapping/unmapping and allocating
+     // the cluster storage up-front which might be more hassle than needed.
+ 
++    BOOL skip = FALSE;
++
+     if (CHECK_FRAME_FLAG_END_OF_FRAGMENT(pFrame->flags)) {
+         // We will append the EoFr tag and package the tags
+         CHK_STATUS(createSerializedMetadata((PCHAR) EOFR_METADATA_NAME, (PCHAR) "", FALSE, pKinesisVideoStream->eosTracker.size,
+@@ -861,12 +863,21 @@ STATUS putFrame(PKinesisVideoStream pKinesisVideoStream, PFrame pFrame)
+         // Preserve the current stream state as it might change after we apply the metadata
+         generatorState = encodedFrameInfo.streamState;
+ 
+-        // Need to handle the metadata if any.
+-        // NOTE: The accumulated metadata will be inserted before the fragment start due to MKV limitation
+-        // as tags are level 1 and will break MKV clusters.
+-        if (generatorState == MKV_STATE_START_CLUSTER) {
+-            // Calculate the size of the metadata first
+-            CHK_STATUS(packageStreamMetadata(pKinesisVideoStream, MKV_STATE_START_CLUSTER, FALSE, NULL, &packagedMetadataSize));
++        if (CHECK_FRAME_FLAG_KEY_FRAME(pFrame->flags)) {
++
++            UINT64 currentItemCount = 0, windowItemCount = 0;
++            CHK_STATUS(contentViewGetWindowItemCount(pKinesisVideoStream->pView, &currentItemCount, &windowItemCount));
++            if (generatorState == MKV_STATE_START_STREAM && windowItemCount == 0) {
++                skip = TRUE;
++            }
++
++            // Need to handle the metadata if any.
++            // NOTE: The accumulated metadata will be inserted before the fragment start due to MKV limitation
++            // as tags are level 1 and will break MKV clusters.
++            if (generatorState == MKV_STATE_START_CLUSTER) {
++                // Calculate the size of the metadata first
++                CHK_STATUS(packageStreamMetadata(pKinesisVideoStream, MKV_STATE_START_CLUSTER, FALSE, NULL, &packagedMetadataSize));
++            }
+         }
+     }
+ 
+@@ -923,7 +934,9 @@ STATUS putFrame(PKinesisVideoStream pKinesisVideoStream, PFrame pFrame)
+         CHK_STATUS(mkvgenPackageFrame(pKinesisVideoStream->pMkvGenerator, pFrame, pTrackInfo, pAlloc, &packagedSize, &encodedFrameInfo));
+ 
+         // Package the metadata if specified
+-        if (packagedMetadataSize != 0) {
++        if (skip) {
++            consumeFragmentMetadata(pKinesisVideoStream);
++        } else if (packagedMetadataSize != 0) {
+             // Move the packaged bits out first to make room for the metadata
+             // NOTE: need to use MEMMOVE due to the overlapping ranges
+             MEMMOVE(pAlloc + encodedFrameInfo.dataOffset + packagedMetadataSize, pAlloc + encodedFrameInfo.dataOffset,
+@@ -1296,7 +1309,7 @@ STATUS getStreamData(PKinesisVideoStream pKinesisVideoStream, UPLOAD_HANDLE uplo
+         // when the last time we got the data the item fell off the view window.
+ 
+         if (IS_UPLOAD_HANDLE_IN_SENDING_EOS_STATE(pUploadHandleInfo) && !pUploadHandleInfo->finalMetadataChecked && !pKinesisVideoStream->streamStopped) {
+-            packageNotSentMetadata(pKinesisVideoStream);
++            CHK_STATUS(packageNotSentMetadata(pKinesisVideoStream));
+ 
+             pUploadHandleInfo->finalMetadataChecked = TRUE;
+             CHK(FALSE, retStatus);
+@@ -2088,6 +2101,7 @@ STATUS putFragmentMetadata(PKinesisVideoStream pKinesisVideoStream, PCHAR name,
+                 // If we need to just remove the metadata then we will also early exit
+                 // NOTE: value is not NULL as it's been checked in the generator.
+                 if (value[0] == '\0') {
++                    DLOGD("Removed metadata: %s", name);
+                     CHK(FALSE, retStatus);
+                 }
+ 
+@@ -2104,6 +2118,7 @@ STATUS putFragmentMetadata(PKinesisVideoStream pKinesisVideoStream, PCHAR name,
+ 
+     CHK_STATUS(createSerializedMetadata(name, value, persistent, packagedSize, STREAM_EVENT_TYPE_NONE, MKV_TREE_TAGS, &pSerializedMetadata));
+     CHK_STATUS(appendValidatedMetadata(pKinesisVideoStream, pSerializedMetadata));
++    DLOGD("Added metadata: %s", name);
+ 
+     // Unlock the stream (even though it will be unlocked in the cleanup
+     pKinesisVideoClient->clientCallbacks.unlockMutexFn(pKinesisVideoClient->clientCallbacks.customData, pKinesisVideoStream->base.lock);
+@@ -2119,6 +2134,45 @@ CleanUp:
+     return retStatus;
+ }
+ 
++STATUS consumeFragmentMetadata(PKinesisVideoStream pKinesisVideoStream) {
++    ENTERS();
++    STATUS retStatus = STATUS_SUCCESS;
++    UINT32 metadataCount = 0, i;
++    UINT64 item;
++    PSerializedMetadata pSerializedMetadata = NULL;
++
++    // Get the count of metadata
++    CHK_STATUS(stackQueueGetCount(pKinesisVideoStream->pMetadataQueue, &metadataCount));
++
++    // Package the metadata
++    while (metadataCount-- != 0) {
++        // Dequeue the current item
++        CHK_STATUS(stackQueueDequeue(pKinesisVideoStream->pMetadataQueue, &item));
++
++        // Package the metadata and delete the allocation
++        pSerializedMetadata = (PSerializedMetadata) item;
++        pSerializedMetadata->applied = TRUE;
++
++        // If we have a persistent metadata then enqueue it back
++        if (pSerializedMetadata->persistent) {
++            CHK_STATUS(stackQueueEnqueue(pKinesisVideoStream->pMetadataQueue, item));
++        } else {
++
++            DLOGE("Removing metadata because it came before the first key frame: %s", pSerializedMetadata->name);
++
++            // bitwise XOR the metadata event with MAX to produce something like
++            // 1111 ^ 0010 =  1101
++            // Then bitwise AND that with the existing event mapping to remove the event
++            pKinesisVideoStream->metadataTracker.events &= (MAX_UINT32 ^ pSerializedMetadata->event);
++            // Delete the allocation otherwise
++            SAFE_MEMFREE(pSerializedMetadata);
++        }
++    }
++CleanUp:
++    CHK_LOG_ERR(retStatus);
++    return retStatus;
++}
++
+ STATUS streamStartFixupOnReconnect(PKinesisVideoStream pKinesisVideoStream)
+ {
+     ENTERS();
+@@ -3244,7 +3298,7 @@ STATUS packageNotSentMetadata(PKinesisVideoStream pKinesisVideoStream)
+ 
+             allocSize -= packagedSize;
+             overallSize += packagedSize;
+-        }
++//        }
+ 
+         // bitwise XOR the metadata event with MAX to produce something like
+         // 1111 ^ 0010 =  1101
+@@ -3253,7 +3307,7 @@ STATUS packageNotSentMetadata(PKinesisVideoStream pKinesisVideoStream)
+ 
+         // The item is the allocation so free it
+         MEMFREE(pSerializedMetadata);
+-//    }
++    }
+     if (tagsFound) {
+         CHK_STATUS(mkvgenIncreaseTagsTagSize(tagsStart, simpleSizes));
+     }
+diff --git a/src/client/src/Stream.h b/src/client/src/Stream.h
+index 0ef28e0..d59ef9a 100644
+--- a/src/client/src/Stream.h
++++ b/src/client/src/Stream.h
+@@ -503,6 +503,8 @@ STATUS createStream(struct __KinesisVideoClient*, PStreamInfo, PKinesisVideoStre
+  */
+ STATUS freeStream(PKinesisVideoStream);
+ 
++STATUS consumeFragmentMetadata(PKinesisVideoStream pKinesisVideoStream);
++
+ /**
+  * Resets the given stream and state machine
+  *
+-- 
+2.39.0
+

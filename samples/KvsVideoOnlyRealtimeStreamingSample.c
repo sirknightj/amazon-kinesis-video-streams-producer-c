@@ -176,28 +176,47 @@ INT32 main(INT32 argc, CHAR* argv[])
     frame.decodingTs = GETTIME(); // current time
     frame.presentationTs = frame.decodingTs;
 
+    // RUN PARAMETERS
+
+    BOOL shouldBePersistent = IS_NULL_OR_EMPTY_STRING(GETENV("persistent"));
+    BOOL addMetadataBefore = IS_NULL_OR_EMPTY_STRING(GETENV("addBeforeAnyPutFrames"));
+
+    if (addMetadataBefore) {
+        // Add metadata before the first keyframe to verify that it gets deleted
+        for (n = 1; n <= numMetadata; n++) {
+            SNPRINTF(metadataKey, METADATA_MAX_KEY_LENGTH, "TEST_KEY_%d", n);
+            SNPRINTF(metadataValue, METADATA_MAX_VALUE_LENGTH, "TEST_VALUE_%d", frame.index + n);
+            CHK_STATUS(putKinesisVideoFragmentMetadata(streamHandle, metadataKey, metadataValue, shouldBePersistent));
+        }
+    }
+
     while (GETTIME() < streamStopTime) {
         frame.index = frameIndex;
         frame.flags = fileIndex % DEFAULT_KEY_FRAME_INTERVAL == 0 ? FRAME_FLAG_KEY_FRAME : FRAME_FLAG_NONE;
         frame.size = SIZEOF(frameBuffer);
 
-        CHK_STATUS(readFrameData(&frame, frameFilePath, videoCodec));
+        // Save network bandwidth
+        if (frame.index <= 25 || frame.index >= 676) {
+            CHK_STATUS(readFrameData(&frame, frameFilePath, videoCodec));
 
-        CHK_STATUS(putKinesisVideoFrame(streamHandle, &frame));
-        if (firstFrame) {
-            startUpLatency = (DOUBLE) (GETTIME() - startTime) / (DOUBLE) HUNDREDS_OF_NANOS_IN_A_MILLISECOND;
-            DLOGD("Start up latency: %lf ms", startUpLatency);
-            firstFrame = FALSE;
+            CHK_STATUS(putKinesisVideoFrame(streamHandle, &frame));
+            if (firstFrame) {
+                startUpLatency = (DOUBLE) (GETTIME() - startTime) / (DOUBLE) HUNDREDS_OF_NANOS_IN_A_MILLISECOND;
+                DLOGD("Start up latency: %lf ms", startUpLatency);
+                firstFrame = FALSE;
+            }
         }
         defaultThreadSleep(frame.duration);
 
         // Add the fragment metadata key-value pairs
         // For limits, refer to https://docs.aws.amazon.com/kinesisvideostreams/latest/dg/limits.html#limits-streaming-metadata
         if (frame.flags == FRAME_FLAG_KEY_FRAME) {
-            for (n = 1; n <= numMetadata; n++) {
-                SNPRINTF(metadataKey, METADATA_MAX_KEY_LENGTH, "TEST_KEY_%d", n);
-                SNPRINTF(metadataValue, METADATA_MAX_VALUE_LENGTH, "TEST_VALUE_%d", frame.index + n);
-                CHK_STATUS(putKinesisVideoFragmentMetadata(streamHandle, metadataKey, metadataValue, TRUE));
+            if (frame.index <= 25 || frame.index >= 676) {
+                for (n = 1; n <= numMetadata; n++) {
+                    SNPRINTF(metadataKey, METADATA_MAX_KEY_LENGTH, "TEST_KEY_%d", n);
+                    SNPRINTF(metadataValue, METADATA_MAX_VALUE_LENGTH, "TEST_VALUE_%d", frame.index + n);
+                    CHK_STATUS(putKinesisVideoFragmentMetadata(streamHandle, metadataKey, metadataValue, shouldBePersistent));
+                }
             }
         }
 
