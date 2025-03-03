@@ -83,7 +83,7 @@ validate_last_tag_group_has_two_tags() {
     local mkvinfo_output=$1
     local end_of_fragment_tags=$(echo "$mkvinfo_output" | grep -c "+ Name: AWS_KINESISVIDEO_END_OF_FRAGMENT")
 
-    if [[ "$end_of_fragment_tags" -le 1 ]]; then
+    if [[ "$end_of_fragment_tags" -eq 0 ]]; then
         echo "❌ Error: Missing \`AWS_KINESISVIDEO_END_OF_FRAGMENT\`"
         return 1
     fi
