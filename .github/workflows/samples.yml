@@ -112,7 +112,7 @@ jobs:
           fi 
           
           set +e # disable exit on error
-          ./${{ matrix.sample-executable }} "$KVS_STREAM_NAME" h264 35 | tee output.log &  
+          ./${{ matrix.sample-executable }} "$KVS_STREAM_NAME" h264 120 | tee output.log &  
           pid=$!
           
           sleep 45 && kill -9 $pid 2>/dev/null && echo "${{ matrix.sample-executable }} timed out and was killed" &  
