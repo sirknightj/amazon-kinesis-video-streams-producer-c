@@ -197,7 +197,7 @@ INT32 main(INT32 argc, CHAR* argv[])
 
         CHK_STATUS(readFrameData(&frame, frameFilePath, videoCodec));
 
-        if (frame.flags == FRAME_FLAG_KEY_FRAME && firstFrame) {
+        if (frame.flags == FRAME_FLAG_KEY_FRAME) {
             Frame eofr = EOFR_FRAME_INITIALIZER;
             putKinesisVideoFrame(streamHandle, &eofr);
         }
