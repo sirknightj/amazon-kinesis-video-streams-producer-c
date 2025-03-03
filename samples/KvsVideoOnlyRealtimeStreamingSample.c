@@ -178,17 +178,17 @@ INT32 main(INT32 argc, CHAR* argv[])
 
     // RUN PARAMETERS
 
-    BOOL shouldBePersistent = IS_NULL_OR_EMPTY_STRING(GETENV("persistent"));
-    BOOL addMetadataBefore = IS_NULL_OR_EMPTY_STRING(GETENV("addBeforeAnyPutFrames"));
-
-    if (addMetadataBefore) {
-        // Add metadata before the first keyframe to verify that it gets deleted
-        for (n = 1; n <= numMetadata; n++) {
-            SNPRINTF(metadataKey, METADATA_MAX_KEY_LENGTH, "TEST_KEY_%d", n);
-            SNPRINTF(metadataValue, METADATA_MAX_VALUE_LENGTH, "TEST_VALUE_%d", frame.index + n);
-            CHK_STATUS(putKinesisVideoFragmentMetadata(streamHandle, metadataKey, metadataValue, shouldBePersistent));
-        }
-    }
+//    BOOL shouldBePersistent = IS_NULL_OR_EMPTY_STRING(GETENV("persistent"));
+//    BOOL addMetadataBefore = IS_NULL_OR_EMPTY_STRING(GETENV("addBeforeAnyPutFrames"));
+//
+//    if (addMetadataBefore) {
+//        // Add metadata before the first keyframe to verify that it gets deleted
+//        for (n = 1; n <= numMetadata; n++) {
+//            SNPRINTF(metadataKey, METADATA_MAX_KEY_LENGTH, "TEST_KEY_%d", n);
+//            SNPRINTF(metadataValue, METADATA_MAX_VALUE_LENGTH, "TEST_VALUE_%d", frame.index + n);
+//            CHK_STATUS(putKinesisVideoFragmentMetadata(streamHandle, metadataKey, metadataValue, shouldBePersistent));
+//        }
+//    }
 
     while (GETTIME() < streamStopTime) {
         frame.index = frameIndex;
@@ -216,7 +216,8 @@ INT32 main(INT32 argc, CHAR* argv[])
             for (n = 1; n <= numMetadata; n++) {
                 SNPRINTF(metadataKey, METADATA_MAX_KEY_LENGTH, "TEST_KEY_%d", n);
                 SNPRINTF(metadataValue, METADATA_MAX_VALUE_LENGTH, "TEST_VALUE_%d", frame.index + n);
-                CHK_STATUS(putKinesisVideoFragmentMetadata(streamHandle, metadataKey, metadataValue, shouldBePersistent));
+//                CHK_STATUS(putKinesisVideoFragmentMetadata(streamHandle, metadataKey, metadataValue, shouldBePersistent));
+                CHK_STATUS(putKinesisVideoFragmentMetadata(streamHandle, metadataKey, metadataValue, FALSE));
             }
         }
 
