@@ -1,0 +1,25 @@
+From ef5b2f2560c55dedd5637001b1537e43b9f8149c Mon Sep 17 00:00:00 2001
+From: sirknightj <jggunawa@amazon.com>
+Date: Mon, 3 Mar 2025 14:00:23 -0800
+Subject: [PATCH] Adjust token rotation
+
+---
+ src/client/src/StreamEvent.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/client/src/StreamEvent.c b/src/client/src/StreamEvent.c
+index ae4b546..ee3cfb6 100644
+--- a/src/client/src/StreamEvent.c
++++ b/src/client/src/StreamEvent.c
+@@ -413,7 +413,7 @@ STATUS getStreamingTokenResult(PKinesisVideoStream pKinesisVideoStream, SERVICE_
+         CHK(expiration > currentTime && (expiration - currentTime) >= MIN_STREAMING_TOKEN_EXPIRATION_DURATION, STATUS_INVALID_TOKEN_EXPIRATION);
+ 
+         // Ensure that we rotate before the max period is enforced
+-        pKinesisVideoStream->streamingAuthInfo.expiration = MIN(expiration, currentTime + MAX_ENFORCED_TOKEN_EXPIRATION_DURATION);
++        pKinesisVideoStream->streamingAuthInfo.expiration = MIN(expiration, currentTime + MIN_STREAMING_TOKEN_EXPIRATION_DURATION);
+ 
+         // Introduce jitter to the expiration time
+         pKinesisVideoStream->streamingAuthInfo.expiration =
+-- 
+2.39.0
+
