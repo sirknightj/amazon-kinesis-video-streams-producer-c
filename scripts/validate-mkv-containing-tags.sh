@@ -44,7 +44,7 @@ verify_mkv_file() {
 detect_mkv_type() {
     local mkvinfo_output=$1
 
-    if echo "$mkvinfo_output" | grep -q "|   + Name: AWS_" && ! echo "$mkvinfo_output" | grep -q "|   + Name: AWS_KINESISVIDEO_END_OF_FRAGMENT"; then
+    if echo "$mkvinfo_output" | grep "|   + Name: AWS_" && ! echo "$mkvinfo_output" | grep "|   + Name: AWS_KINESISVIDEO_END_OF_FRAGMENT"; then
         echo "**MKV type:** persisted MKV"
     else
         echo "**MKV type:** SDK-generated MKV"
