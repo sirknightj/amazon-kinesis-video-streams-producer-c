@@ -197,6 +197,11 @@ INT32 main(INT32 argc, CHAR* argv[])
 
         CHK_STATUS(readFrameData(&frame, frameFilePath, videoCodec));
 
+        if (frame.flags == FRAME_FLAG_KEY_FRAME && !firstFrame) {
+            Frame eofr = EOFR_FRAME_INITIALIZER;
+            putKinesisVideoFrame(streamHandle, &eofr);
+        }
+
         CHK_STATUS(putKinesisVideoFrame(streamHandle, &frame));
         if (firstFrame) {
             startUpLatency = (DOUBLE) (GETTIME() - startTime) / (DOUBLE) HUNDREDS_OF_NANOS_IN_A_MILLISECOND;
