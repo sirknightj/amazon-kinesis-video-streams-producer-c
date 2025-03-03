@@ -115,7 +115,7 @@ jobs:
           ./${{ matrix.sample-executable }} "$KVS_STREAM_NAME" h264 120 | tee output.log &  
           pid=$!
           
-          sleep 45 && kill -9 $pid 2>/dev/null && echo "${{ matrix.sample-executable }} timed out and was killed" &  
+          sleep 300 && kill -9 $pid 2>/dev/null && echo "${{ matrix.sample-executable }} timed out and was killed" &  
           watchdog=$!
           
           # Wait for the sample executable to finish  
