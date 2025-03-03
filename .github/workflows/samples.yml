@@ -81,8 +81,8 @@ jobs:
           mv 0001-Persistent-metadata-fix.patch ./dependency/libkvspic/kvspic-src/src
           mv 0002-Fix-for-nonpersistent-metadata-too.patch ./dependency/libkvspic/kvspic-src/src
           cd ./dependency/libkvspic/kvspic-src/src
-          git apply 0001-Persistent-metadata-fix.patch
-          git apply 0002-Fix-for-nonpersistent-metadata-too.patch
+          # git apply 0001-Persistent-metadata-fix.patch
+          # git apply 0002-Fix-for-nonpersistent-metadata-too.patch
           cd $GITHUB_WORKSPACE/build
           make -j$(nproc)
 
