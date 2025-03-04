@@ -66,9 +66,15 @@ jobs:
 
       - name: Build repository
         run: |
+          if command -v nproc &>/dev/null; then
+            num_procs=$(nproc)
+          else
+            num_procs=$(sysctl -n hw.logicalcpu)
+          fi
+          
           mkdir build && cd build
           cmake .. -DBUILD_DEPENDENCIES=OFF
-          make -j$(nproc)
+          make -j$num_procs
 
       - name: Change token rotation to 30s
         if: ${{ matrix.sample-executable.name == 'kvsVideoOnlyRealtimeStreamingSample-token-rotation' }}
@@ -82,8 +88,14 @@ jobs:
           else
             sed -i '' "s|$string_to_replace|$string_to_replace_with|" "$file_path"
           fi
+          
           cd $GITHUB_WORKSPACE/build
-          make -j$(nproc)
+          if command -v nproc &>/dev/null; then
+            num_procs=$(nproc)
+          else
+            num_procs=$(sysctl -n hw.logicalcpu)
+          fi
+          make -j$num_procs
           
           # Rename the file
           mv kvsVideoOnlyRealtimeStreamingSample kvsVideoOnlyRealtimeStreamingSample-token-rotation
