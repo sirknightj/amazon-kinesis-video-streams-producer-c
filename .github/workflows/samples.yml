@@ -131,6 +131,7 @@ jobs:
             echo "Unsupported runner: $RUNNER_OS"
             exit 1
           fi
+          make clean -j"$num_procs"
           make -j"$num_procs"
           
           # Rename the file
