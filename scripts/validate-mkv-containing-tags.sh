@@ -44,7 +44,10 @@ verify_mkv_file() {
 detect_mkv_type() {
     local mkvinfo_output=$1
 
-    if echo "$mkvinfo_output" | grep "|   + Name: AWS_" && ! echo "$mkvinfo_output" | grep "|   + Name: AWS_KINESISVIDEO_END_OF_FRAGMENT"; then
+    local aws_count=$(echo "$mkvinfo_output" | grep "|   + Name: AWS_" | wc -l)
+    local end_of_fragment_count=$(echo "$mkvinfo_output" | grep "|   + Name: AWS_KINESISVIDEO_END_OF_FRAGMENT" | wc -l)
+
+    if [[ "$aws_count" -gt 0 && "$end_of_fragment_count" -eq 0 ]]; then
         echo "**MKV type:** persisted MKV"
     else
         echo "**MKV type:** SDK-generated MKV"
