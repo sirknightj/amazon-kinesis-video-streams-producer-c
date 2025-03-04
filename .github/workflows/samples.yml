@@ -141,7 +141,7 @@ jobs:
           echo "Debug directory:"
           ls -tlahr $KVS_DEBUG_DUMP_DATA_FILE_DIR
           
-          FILE_LIST=$(find "$KVS_DEBUG_DUMP_DATA_FILE_DIR" -type f -name "*.mkv" -size +0c 2>/dev/null)
+          FILE_LIST=$(find "$KVS_DEBUG_DUMP_DATA_FILE_DIR" -type f -name "*.mkv" -size +0c 2>/dev/null | sort -V)
           if [ -z "$FILE_LIST" ]; then
             echo "No MKV files found in $KVS_DEBUG_DUMP_DATA_FILE_DIR"
             exit 1
