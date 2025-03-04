@@ -12,15 +12,17 @@ on:
 
 jobs:
   sample-checks:
-    name: ${{ matrix.runner.id }}
+    name: ${{ matrix.runner.id }} - ${{ matrix.sample-executable.name }}
     strategy:
       matrix:
         sample-executable:
-          - kvsAudioOnlyStreamingSample
-          - kvsAudioVideoStreamingSample
-          - kvsVideoOnlyOfflineStreamingSample
-          - kvsVideoOnlyRealtimeStreamingSample
-          - kvsVideoOnlyRealtimeStreamingSample-token-rotation
+          - name: kvsAudioOnlyStreamingSample
+          - name: kvsAudioVideoStreamingSample
+          - name: kvsVideoOnlyOfflineStreamingSample
+          - name: kvsVideoOnlyRealtimeStreamingSample
+            args: h264 120
+          - name: kvsVideoOnlyRealtimeStreamingSample-token-rotation
+            args: h264 120
 
         runner:
           - id: macos-latest
@@ -43,7 +45,7 @@ jobs:
       AWS_KVS_LOG_LEVEL: 2
       KVS_DEBUG_DUMP_DATA_FILE_DIR: ./debug_output
       DEBIAN_FRONTEND: noninteractive
-      KVS_STREAM_NAME: demo-stream-producer-c-${{ matrix.runner.id }}-ci-${{ matrix.sample-executable }}-pers-${{ matrix.persistent }}-ab-${{ matrix.add-before }}
+      KVS_STREAM_NAME: demo-stream-producer-c-${{ matrix.runner.id }}-ci-${{ matrix.sample-executable.name }}-pers-${{ matrix.persistent }}-ab-${{ matrix.add-before }}
 
     permissions:
       id-token: write
@@ -70,7 +72,7 @@ jobs:
           make -j$(nproc)
 
       - name: Change token rotation to 30s
-        if: ${{ matrix.sample-executable == 'kvsVideoOnlyRealtimeStreamingSample-token-rotation' }}
+        if: ${{ matrix.sample-executable.name == 'kvsVideoOnlyRealtimeStreamingSample-token-rotation' }}
         run: |
           sed -i 's|pKinesisVideoStream->streamingAuthInfo.expiration = MIN(expiration, currentTime + MAX_ENFORCED_TOKEN_EXPIRATION_DURATION);|pKinesisVideoStream->streamingAuthInfo.expiration = MIN(expiration, currentTime + MIN_STREAMING_TOKEN_EXPIRATION_DURATION);|' ./dependency/libkvspic/kvspic-src/src/client/src/StreamEvent.c
           cd $GITHUB_WORKSPACE/build
@@ -84,7 +86,7 @@ jobs:
           aws-region: ${{ secrets.AWS_REGION }}
           role-duration-seconds: 900
 
-      - name: Run ${{ matrix.sample-executable }}
+      - name: Run ${{ matrix.sample-executable.name }}
         working-directory: ./build
         run: |
           mkdir -p $KVS_DEBUG_DUMP_DATA_FILE_DIR
@@ -100,10 +102,10 @@ jobs:
           fi 
           
           set +e # disable exit on error
-          ./${{ matrix.sample-executable }} "$KVS_STREAM_NAME" h264 120 | tee output.log &  
+          ./${{ matrix.sample-executable.name }} "$KVS_STREAM_NAME" ${{ matrix.sample-executable.args }} | tee output.log &  
           pid=$!
           
-          sleep 300 && kill -9 $pid 2>/dev/null && echo "${{ matrix.sample-executable }} timed out and was killed" &  
+          sleep 300 && kill -9 $pid 2>/dev/null && echo "${{ matrix.sample-executable.name }} timed out and was killed" &  
           watchdog=$!
           
           # Wait for the sample executable to finish  
@@ -115,8 +117,8 @@ jobs:
           
           exit_code=${PIPESTATUS[0]}
           if [ "$exit_code" -ne 0 ]; then
-            echo "${{ matrix.sample-executable }} exited with code: $exit_code"
-            # exit 1
+            echo "${{ matrix.sample-executable.name }} exited with code: $exit_code"
+            exit 1
           fi
           
           echo "Debug directory:"
@@ -187,7 +189,7 @@ jobs:
 
       - name: Validate MKV tags
         working-directory: ./build
-        if: ${{ matrix.sample-executable == 'kvsVideoOnlyRealtimeStreamingSample' || matrix.sample-executable == 'kvsVideoOnlyRealtimeStreamingSample-token-rotation' }}
+        if: ${{ matrix.sample-executable.name == 'kvsVideoOnlyRealtimeStreamingSample' || matrix.sample-executable.name == 'kvsVideoOnlyRealtimeStreamingSample-token-rotation' }}
         run: |
           set -x
           set +e  # Allow script to continue even when the script exits with error code 1
