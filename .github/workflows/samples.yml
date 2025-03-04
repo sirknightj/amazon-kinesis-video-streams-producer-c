@@ -87,14 +87,15 @@ jobs:
         
           set +e
           echo "Checking if the pattern exists before replacement:"
-          export occurrences=$(grep -F -c "$string_to_replace" "$file_path")
-          if [[ "$occurrences" -gt 1 ]]; then
+          occurrences_of_old=$(grep -F -c "$string_to_replace" "$file_path")
+          if [[ "$occurrences_of_old" -gt 1 ]]; then
             echo "There is more than 1 of: \`$string_to_replace\` in \`$file_path\`!"
             exit 1
-          elif [[ "$occurrences" -eq 0 ]]; then
+          elif [[ "$occurrences_of_old" -eq 0 ]]; then
             echo "Was not able to find: \`$string_to_replace\` in \`$file_path\`!"
             exit 1
           fi
+          occurrences_of_new_before=$(grep -F -c "$string_to_replace_with" "$file_path")
           echo "Yes"
           set -e
         
@@ -108,10 +109,18 @@ jobs:
               else print $0;                                    # Print original lines
             }' "$file_path" > temp_file
           mv temp_file "$file_path"
+          
+          cat "$file_path" | grep "EXPIRATION"
 
+          set +e
           echo "Checking if the replacement was successful:"
-          grep -F -c "$string_to_replace_with" "$file_path" || (echo "Replacement failed" && exit 1)
+          occurrences_of_new_after=$(grep -F -c "$string_to_replace_with" "$file_path")
+          if [[ "$occurrences_of_new_after" -eq "$occurrences_of_new_before" ]]; then
+            echo "Replacement failed - Nothing changed!"
+            exit 1
+          fi
           echo "Yes"
+          set -e
         
           cd "$GITHUB_WORKSPACE/build"
           if [[ "$RUNNER_OS" == "Linux" ]]; then
@@ -177,7 +186,7 @@ jobs:
         working-directory: ./build
         run: |
           echo "Debug directory:"
-          ls -lvh -tlahr $KVS_DEBUG_DUMP_DATA_FILE_DIR
+          ls -lvh $KVS_DEBUG_DUMP_DATA_FILE_DIR
           
           FILE_LIST=$(find "$KVS_DEBUG_DUMP_DATA_FILE_DIR" -type f -name "*.mkv" -size +0c 2>/dev/null | sort -V)
           if [ -z "$FILE_LIST" ]; then
