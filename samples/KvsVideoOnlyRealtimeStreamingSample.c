@@ -197,10 +197,10 @@ INT32 main(INT32 argc, CHAR* argv[])
 
         CHK_STATUS(readFrameData(&frame, frameFilePath, videoCodec));
 
-        if (frame.flags == FRAME_FLAG_KEY_FRAME && !firstFrame) {
-            Frame eofr = EOFR_FRAME_INITIALIZER;
-            putKinesisVideoFrame(streamHandle, &eofr);
-        }
+//        if (frame.flags == FRAME_FLAG_KEY_FRAME && !firstFrame) {
+//            Frame eofr = EOFR_FRAME_INITIALIZER;
+//            putKinesisVideoFrame(streamHandle, &eofr);
+//        }
 
         CHK_STATUS(putKinesisVideoFrame(streamHandle, &frame));
         if (firstFrame) {
@@ -228,9 +228,9 @@ INT32 main(INT32 argc, CHAR* argv[])
         fileIndex = fileIndex % NUMBER_OF_FRAME_FILES;
     }
 
-    // Add a frame at the end
-    Frame eofr = EOFR_FRAME_INITIALIZER;
-    putKinesisVideoFrame(streamHandle, &eofr);
+//    // Add a frame at the end
+//    Frame eofr = EOFR_FRAME_INITIALIZER;
+//    putKinesisVideoFrame(streamHandle, &eofr);
 
     CHK_STATUS(stopKinesisVideoStreamSync(streamHandle));
     CHK_STATUS(freeKinesisVideoStream(&streamHandle));
