@@ -79,26 +79,51 @@ jobs:
       - name: Change token rotation to 30s
         if: ${{ matrix.sample-executable.name == 'kvsVideoOnlyRealtimeStreamingSample-token-rotation' }}
         run: |
-          string_to_replace="pKinesisVideoStream->streamingAuthInfo.expiration = MIN(expiration, currentTime + MAX_ENFORCED_TOKEN_EXPIRATION_DURATION);"
-          string_to_replace_with="pKinesisVideoStream->streamingAuthInfo.expiration = MIN(expiration, currentTime + MIN_STREAMING_TOKEN_EXPIRATION_DURATION);"
           file_path="./dependency/libkvspic/kvspic-src/src/client/src/StreamEvent.c"
-          
-          if sed --version 2>/dev/null | grep -q GNU; then
-            sed -i "s|$string_to_replace|$string_to_replace_with|" "$file_path"
-          else
-            sed -i '' "s|$string_to_replace|$string_to_replace_with|" "$file_path"
+          string_to_replace='pKinesisVideoStream->streamingAuthInfo.expiration = MIN(expiration, currentTime + MAX_STREAMING_TOKEN_EXPIRATION_DURATION);'
+          string_to_replace_with='pKinesisVideoStream->streamingAuthInfo.expiration = MIN(expiration, currentTime + MIN_STREAMING_TOKEN_EXPIRATION_DURATION);'
+        
+          echo "Checking if the pattern exists before replacement:"
+          occurrences=$(grep -F -c "$string_to_replace" "$file_path")
+          if [[ "$occurrences" -gt 1 ]]; then
+            echo "There is more than 1 of: \`$string_to_replace\` in \`$file_path\`!"
+            exit 1
+          elif [[ "$occurrences" -eq 0 ]]; then
+            echo "Was not able to find: \`$string_to_replace\` in \`$file_path\`!"
+            exit 1
           fi
-          
-          cd $GITHUB_WORKSPACE/build
-          if command -v nproc &>/dev/null; then
+          echo "Yes"
+        
+          # Replace the line, while preserving the indentation
+          awk -v old="$string_to_replace" -v new="$string_to_replace_with" \
+            '{ 
+              match($0, /^[[:space:]]+/);                       # Find leading spaces
+              leading_spaces = substr($0, RSTART, RLENGTH);     # Extract them
+              trimmed = $0; sub(/^[[:space:]]+/, "", trimmed);  # Trim leading spaces
+              if (trimmed == old) print leading_spaces new;     # Preserve leading spaces
+              else print $0;                                    # Print original lines
+            }' "$file_path" > temp_file
+          mv temp_file "$file_path"
+
+          echo "Checking if the replacement was successful:"
+          grep -F "$string_to_replace_with" "$file_path" || (echo "Replacement failed" && exit 1)
+          echo "Yes"
+        
+          cd "$GITHUB_WORKSPACE/build"
+          if [[ "$RUNNER_OS" == "Linux" ]]; then
             num_procs=$(nproc)
-          else
+          elif [[ "$RUNNER_OS" == "macOS" ]]; then
             num_procs=$(sysctl -n hw.logicalcpu)
+          else
+            echo "Unsupported runner: $RUNNER_OS"
+            exit 1
           fi
-          make -j$num_procs
+          make -j"$num_procs"
           
           # Rename the file
           mv kvsVideoOnlyRealtimeStreamingSample kvsVideoOnlyRealtimeStreamingSample-token-rotation
+
+        shell: bash
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4

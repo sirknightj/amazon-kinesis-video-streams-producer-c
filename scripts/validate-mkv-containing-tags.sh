@@ -210,6 +210,7 @@ verify_file() {
         echo "\`\`\`"
         echo ""
         echo "</details>"
+        echo ""
     else
         echo "#### ✅ MKV validation succeeded for $file"
     fi
