@@ -73,7 +73,15 @@ jobs:
       - name: Change token rotation to 30s
         if: ${{ matrix.sample-executable.name == 'kvsVideoOnlyRealtimeStreamingSample-token-rotation' }}
         run: |
-          sed -i 's|pKinesisVideoStream->streamingAuthInfo.expiration = MIN(expiration, currentTime + MAX_ENFORCED_TOKEN_EXPIRATION_DURATION);|pKinesisVideoStream->streamingAuthInfo.expiration = MIN(expiration, currentTime + MIN_STREAMING_TOKEN_EXPIRATION_DURATION);|' ./dependency/libkvspic/kvspic-src/src/client/src/StreamEvent.c
+          string_to_replace="pKinesisVideoStream->streamingAuthInfo.expiration = MIN(expiration, currentTime + MAX_ENFORCED_TOKEN_EXPIRATION_DURATION);"
+          string_to_replace_with="pKinesisVideoStream->streamingAuthInfo.expiration = MIN(expiration, currentTime + MIN_STREAMING_TOKEN_EXPIRATION_DURATION);"
+          file_path="./dependency/libkvspic/kvspic-src/src/client/src/StreamEvent.c"
+          
+          if sed --version 2>/dev/null | grep -q GNU; then
+            sed -i "s|$string_to_replace|$string_to_replace_with|" "$file_path"
+          else
+            sed -i '' "s|$string_to_replace|$string_to_replace_with|" "$file_path"
+          fi
           cd $GITHUB_WORKSPACE/build
           make -j$(nproc)
           
