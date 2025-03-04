@@ -202,6 +202,7 @@ jobs:
         if: ${{ matrix.sample-executable == 'kvsVideoOnlyRealtimeStreamingSample' }}
         run: |
           set -x
+          set +e  # Allow script to continue even when the script exits with error code 1
           failed=0
           
           while read -r mkvFile; do
