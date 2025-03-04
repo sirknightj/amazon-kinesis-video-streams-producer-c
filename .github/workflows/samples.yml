@@ -20,7 +20,6 @@ jobs:
           - name: kvsAudioVideoStreamingSample
           - name: kvsVideoOnlyOfflineStreamingSample
           - name: kvsVideoOnlyRealtimeStreamingSample
-            args: h264 120
           - name: kvsVideoOnlyRealtimeStreamingSample-token-rotation
             args: h264 120
 
