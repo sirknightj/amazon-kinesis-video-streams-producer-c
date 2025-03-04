@@ -44,8 +44,8 @@ verify_mkv_file() {
 detect_mkv_type() {
     local mkvinfo_output=$1
 
-    local aws_count=$(echo "$mkvinfo_output" | grep "|   + Name: AWS_" | wc -l)
-    local end_of_fragment_count=$(echo "$mkvinfo_output" | grep "|   + Name: AWS_KINESISVIDEO_END_OF_FRAGMENT" | wc -l)
+    local aws_count=$(echo "$mkvinfo_output" | grep -c "|   + Name: AWS_")
+    local end_of_fragment_count=$(echo "$mkvinfo_output" | grep -c "|   + Name: AWS_KINESISVIDEO_END_OF_FRAGMENT")
 
     if [[ "$aws_count" -gt 0 && "$end_of_fragment_count" -eq 0 ]]; then
         echo "**MKV type:** persisted MKV"
@@ -94,15 +94,15 @@ validate_last_tag_group_has_two_tags() {
 
     local current_tag_count=0
     while IFS= read -r line; do
-        if [[ "$line" =~ "AWS_KINESISVIDEO_END_OF_FRAGMENT" ]]; then
+        if [[ "$line" == *"+ Name: AWS_KINESISVIDEO_END_OF_FRAGMENT"* ]]; then
             if [[ $current_tag_count -lt 2 ]]; then
                 echo "❌ Error: Last tag group (containing AWS_KINESISVIDEO_END_OF_FRAGMENT) doesn't have at least two tags!"
                 return 1
             fi
-        elif [[ "$line" =~ "|+ Tags" ]]; then
+        elif [[ "$line" == *"|+ Tags"* ]]; then
             # Don't use ++ since it returns code 1 when var is 0
             current_tag_count=$((current_tag_count + 1))
-        elif [[ $"line" =~ "|+ Cluster" ]]; then
+        elif [[ "$line" == *"|+ Cluster"* ]]; then
             current_tag_count=0
         fi
     done <<< "$mkvinfo_output" | grep -e "|+ Cluster" -e "|+ Tags"
@@ -171,7 +171,7 @@ validate_last_tag_group_is_user_metadata() {
         return 1
     fi
 
-    echo "✅ Tags after the Cluster are fragment metadata Tags (OK)"
+    echo "✅ Tags after the Cluster are user fragment metadata Tags (OK)"
     return 0
 }
 
