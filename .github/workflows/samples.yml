@@ -12,22 +12,15 @@ on:
 
 jobs:
   sample-checks:
-    name: ${{ matrix.runner.id }} - persist=${{ matrix.persistent }}, add-before=${{ matrix.add-before }}
+    name: ${{ matrix.runner.id }}
     strategy:
       matrix:
         sample-executable:
-          #          - kvsAudioOnlyStreamingSample
-          #          - kvsAudioVideoStreamingSample
-          #          - kvsVideoOnlyOfflineStreamingSample
+          - kvsAudioOnlyStreamingSample
+          - kvsAudioVideoStreamingSample
+          - kvsVideoOnlyOfflineStreamingSample
           - kvsVideoOnlyRealtimeStreamingSample
-
-        persistent:
-          - true
-          - false
-
-        add-before:
-          - true
-          - false
+          - kvsVideoOnlyRealtimeStreamingSample-token-rotation
 
         runner:
           - id: macos-latest
@@ -77,14 +70,9 @@ jobs:
           make -j$(nproc)
 
       - name: Change token rotation to 30s
+        if: ${{ matrix.sample-executable == 'kvsVideoOnlyRealtimeStreamingSample-token-rotation' }}
         run: |
-          mv 0001-Persistent-metadata-fix.patch ./dependency/libkvspic/kvspic-src/src
-          mv 0002-Fix-for-nonpersistent-metadata-too.patch ./dependency/libkvspic/kvspic-src/src
-          mv 0001-Adjust-token-rotation.patch ./dependency/libkvspic/kvspic-src/src
-          cd ./dependency/libkvspic/kvspic-src/src
-          # git apply 0001-Persistent-metadata-fix.patch
-          # git apply 0002-Fix-for-nonpersistent-metadata-too.patch
-          git apply 0001-Adjust-token-rotation.patch
+          sed -i 's|pKinesisVideoStream->streamingAuthInfo.expiration = MIN(expiration, currentTime + MAX_ENFORCED_TOKEN_EXPIRATION_DURATION);|pKinesisVideoStream->streamingAuthInfo.expiration = MIN(expiration, currentTime + MIN_STREAMING_TOKEN_EXPIRATION_DURATION);|' ./dependency/libkvspic/kvspic-src/src/client/src/StreamEvent.c
           cd $GITHUB_WORKSPACE/build
           make -j$(nproc)
 
@@ -199,7 +187,7 @@ jobs:
 
       - name: Validate MKV tags
         working-directory: ./build
-        if: ${{ matrix.sample-executable == 'kvsVideoOnlyRealtimeStreamingSample' }}
+        if: ${{ matrix.sample-executable == 'kvsVideoOnlyRealtimeStreamingSample' || matrix.sample-executable == 'kvsVideoOnlyRealtimeStreamingSample-token-rotation' }}
         run: |
           set -x
           set +e  # Allow script to continue even when the script exits with error code 1
