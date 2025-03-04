@@ -45,6 +45,7 @@ jobs:
       KVS_DEBUG_DUMP_DATA_FILE_DIR: ./debug_output
       DEBIAN_FRONTEND: noninteractive
       KVS_STREAM_NAME: demo-stream-producer-c-${{ matrix.runner.id }}-ci-${{ matrix.sample-executable.name }}-pers-${{ matrix.persistent }}-ab-${{ matrix.add-before }}
+      EXECUTABLE_TIMEOUT_SECS: 300
 
     permissions:
       id-token: write
@@ -152,10 +153,10 @@ jobs:
           fi 
           
           set +e # disable exit on error
-          ./${{ matrix.sample-executable.name }} "$KVS_STREAM_NAME" ${{ matrix.sample-executable.args }} | tee output.log &  
+          (./${{ matrix.sample-executable.name }} "$KVS_STREAM_NAME" ${{ matrix.sample-executable.args }} | tee output.log) &  
           pid=$!
           
-          sleep 300 && kill -9 $pid 2>/dev/null && echo "${{ matrix.sample-executable.name }} timed out and was killed" &  
+          (sleep "$EXECUTABLE_TIMEOUT_SECS" && kill -9 $pid 2>/dev/null && echo "${{ matrix.sample-executable.name }} timed out and was killed") &  
           watchdog=$!
           
           # Wait for the sample executable to finish  
@@ -170,16 +171,13 @@ jobs:
             echo "${{ matrix.sample-executable.name }} exited with code: $exit_code"
             exit 1
           fi
-          
-          echo "Debug directory:"
-          ls -tlahr $KVS_DEBUG_DUMP_DATA_FILE_DIR
         shell: bash
 
       - name: Save MKV file list
         working-directory: ./build
         run: |
           echo "Debug directory:"
-          ls -tlahr $KVS_DEBUG_DUMP_DATA_FILE_DIR
+          ls -lvh -tlahr $KVS_DEBUG_DUMP_DATA_FILE_DIR
           
           FILE_LIST=$(find "$KVS_DEBUG_DUMP_DATA_FILE_DIR" -type f -name "*.mkv" -size +0c 2>/dev/null | sort -V)
           if [ -z "$FILE_LIST" ]; then
