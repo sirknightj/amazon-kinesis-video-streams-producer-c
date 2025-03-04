@@ -228,6 +228,10 @@ INT32 main(INT32 argc, CHAR* argv[])
         fileIndex = fileIndex % NUMBER_OF_FRAME_FILES;
     }
 
+    // Add a frame at the end
+    Frame eofr = EOFR_FRAME_INITIALIZER;
+    putKinesisVideoFrame(streamHandle, &eofr);
+
     CHK_STATUS(stopKinesisVideoStreamSync(streamHandle));
     CHK_STATUS(freeKinesisVideoStream(&streamHandle));
     CHK_STATUS(freeKinesisVideoClient(&clientHandle));
