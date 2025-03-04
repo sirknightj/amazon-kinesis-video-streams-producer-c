@@ -76,6 +76,9 @@ jobs:
           sed -i 's|pKinesisVideoStream->streamingAuthInfo.expiration = MIN(expiration, currentTime + MAX_ENFORCED_TOKEN_EXPIRATION_DURATION);|pKinesisVideoStream->streamingAuthInfo.expiration = MIN(expiration, currentTime + MIN_STREAMING_TOKEN_EXPIRATION_DURATION);|' ./dependency/libkvspic/kvspic-src/src/client/src/StreamEvent.c
           cd $GITHUB_WORKSPACE/build
           make -j$(nproc)
+          
+          # Rename the file
+          mv kvsVideoOnlyRealtimeStreamingSample kvsVideoOnlyRealtimeStreamingSample-token-rotation
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
