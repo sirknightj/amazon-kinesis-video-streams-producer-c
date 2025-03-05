@@ -34,13 +34,11 @@ verify_mkv_file() {
         echo "❌ Error: \`$file\` is empty!"
         exit 1
     fi
-    echo "✅ \`$file\` isn't empty (OK)"
 
     if ! mkvinfo -v "$file" &> /dev/null; then
         echo "❌ Error: $file is not a valid MKV file or cannot be parsed by \`mkvinfo\`."
         exit 1
     fi
-    echo "✅ Can be parsed by \`mkvinfo\` (OK)"
 }
 
 detect_mkv_type() {
