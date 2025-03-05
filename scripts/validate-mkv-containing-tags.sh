@@ -26,19 +26,21 @@ verify_mkv_file() {
     local file=$1
 
     if [[ ! -f "$file" ]]; then
-        echo "❌ Error: $file not found!"
+        echo "❌ Error: \`$file\` not found!"
         exit 1
     fi
 
     if [[ ! -s "$file" ]]; then
-        echo "❌ Error: $file is empty!"
+        echo "❌ Error: \`$file\` is empty!"
         exit 1
     fi
+    echo "✅ \`$file\` isn't empty (OK)"
 
     if ! mkvinfo -v "$file" &> /dev/null; then
         echo "❌ Error: $file is not a valid MKV file or cannot be parsed by \`mkvinfo\`."
         exit 1
     fi
+    echo "✅ Can be parsed by \`mkvinfo\` (OK)"
 }
 
 detect_mkv_type() {
@@ -52,6 +54,30 @@ detect_mkv_type() {
     else
         echo "**MKV type:** SDK-generated MKV"
     fi
+}
+
+validate_at_least_one_cluster_exists() {
+    local mkvinfo_output=$1
+    local clusters=$(echo "$mkvinfo_output" | grep -c "|+ Cluster")
+
+    if [[ "$clusters" -eq 0 ]]; then
+        echo "❌ Error: There are no Clusters!"
+        return 1
+    fi
+    echo "✅ Contains Clusters (OK)"
+    return 0
+}
+
+validate_at_least_one_tag_exists() {
+    local mkvinfo_output=$1
+    local tags=$(echo "$mkvinfo_output" | grep -c "|+ Tags")
+
+    if [[ "$tags" -eq 0 ]]; then
+        echo "❌ Error: There are no Tags!"
+        return 1
+    fi
+    echo "✅ Contains Tags (OK)"
+    return 0
 }
 
 validate_clusters_followed_by_tags() {
@@ -70,10 +96,10 @@ validate_clusters_followed_by_tags() {
 validate_clusters_come_first() {
     local mkvinfo_output=$1
     while IFS= read -r line; do
-        if [[ "$line" =~ "|+ Cluster" ]]; then
+        if [[ "$line" == *"|+ Cluster"* ]]; then
             echo "✅ Clusters detected first (OK)"
             return 0
-        elif [[ "$line" =~ "|+ Tags" ]]; then
+        elif [[ "$line" == *"|+ Tags"* ]]; then
             echo "❌ Error: Tags appear before Clusters!"
             return 1
         fi
@@ -84,6 +110,16 @@ validate_clusters_come_first() {
 
 validate_last_tag_group_has_two_tags() {
     local mkvinfo_output=$1
+
+    local clusters_and_tags=$(echo "$mkvinfo_output" | grep -e "|+ Cluster" -e "|+ Tags")
+    local last_element=$(echo "$clusters_and_tags" | tail -n1)
+
+    if [[ "$last_element" != *"|+ Tags"* ]]; then
+        echo "❌ Error: Last element is not Tags"
+        return 1
+    fi
+    echo "✅ Last element is Tags (OK)"
+
     local end_of_fragment_tags=$(echo "$mkvinfo_output" | grep -c "+ Name: AWS_KINESISVIDEO_END_OF_FRAGMENT")
 
     if [[ "$end_of_fragment_tags" -eq 0 ]]; then
@@ -177,9 +213,9 @@ validate_last_tag_group_is_user_metadata() {
 
 verify_file() {
     local file=$1
-    verify_mkv_file "$file"
 
     echo "### MKV Structure Validation for $file 🚀"
+    verify_mkv_file "$file"
 
     local mkvinfo_output=$(mkvinfo -v "$file" 2>/dev/null)
 
@@ -187,6 +223,8 @@ verify_file() {
     echo "$mkv_type"
 
     local error=0
+    validate_at_least_one_cluster_exists "$mkvinfo_output" || error=1
+    validate_at_least_one_tag_exists "$mkvinfo_output" || error=1
     validate_clusters_followed_by_tags "$mkvinfo_output" || error=1
 
     if [[ "$mkv_type" == "**MKV type:** SDK-generated MKV" ]]; then
@@ -210,7 +248,6 @@ verify_file() {
         echo "\`\`\`"
         echo ""
         echo "</details>"
-        echo ""
     else
         echo "#### ✅ MKV validation succeeded for $file"
     fi
@@ -233,6 +270,7 @@ main() {
     local overall_error=0
     for file_name in "$@"; do
         verify_file "$file_name" || overall_error=1
+        echo ""
     done
 
     exit $overall_error
