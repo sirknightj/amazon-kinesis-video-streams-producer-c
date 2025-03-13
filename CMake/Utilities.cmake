@@ -25,12 +25,14 @@ function(fetch_repo lib_name)
     message(FATAL_ERROR "CMake step for lib${lib_name} failed: ${result}")
   endif()
 
-  # Parallel builds not supported by nmake
-  if (NOT WIN32)
-    set(CMAKE_COMMAND ${CMAKE_COMMAND} --parallel)
+  if (WIN32)
+    set(PARALLEL_BUILD "")
+  else()
+    set(PARALLEL_BUILD "-j")
   endif()
+
   execute_process(
-    COMMAND ${CMAKE_COMMAND} --build .
+    COMMAND ${CMAKE_COMMAND} --build . ${PARALLEL_BUILD}
     RESULT_VARIABLE result
     WORKING_DIRECTORY ${DEPENDENCY_DOWNLOAD_PATH}/lib${lib_name})
   if(result)
@@ -90,8 +92,14 @@ function(build_dependency lib_name)
   if(result)
     message(FATAL_ERROR "CMake step for lib${lib_name} failed: ${result}")
   endif()
+
+  if (WIN32)
+    set(PARALLEL_BUILD "")
+  else()
+    set(PARALLEL_BUILD "-j")
+  endif()
   execute_process(
-    COMMAND ${CMAKE_COMMAND} --build .
+    COMMAND ${CMAKE_COMMAND} --build . ${PARALLEL_BUILD}
     RESULT_VARIABLE result
     WORKING_DIRECTORY ${OPEN_SRC_INSTALL_PREFIX}/lib${lib_name})
   if(result)
