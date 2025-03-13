@@ -24,6 +24,11 @@ function(fetch_repo lib_name)
   if(result)
     message(FATAL_ERROR "CMake step for lib${lib_name} failed: ${result}")
   endif()
+
+  # Parallel builds not supported by nmake
+  if (NOT WIN32)
+    set(CMAKE_COMMAND ${CMAKE_COMMAND} --parallel)
+  endif()
   execute_process(
     COMMAND ${CMAKE_COMMAND} --build .
     RESULT_VARIABLE result
