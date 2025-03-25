@@ -24,6 +24,8 @@ set(CMAKE_ARGS
         -DBUILD_LIBCURL_DOCS=OFF
         -DBUILD_MISC_DOCS=OFF
         -DBUILD_TESTING=OFF
+        -DCURL_ENABLE_LIBPSL=OFF # https://github.com/curl/curl/issues/16486
+        -DCURL_DISABLE_COOKIES=ON
         -DHTTP_ONLY=ON)
 
 # By default use openssl
@@ -35,21 +37,12 @@ if (WIN32)
     set(CMAKE_ARGS ${CMAKE_ARGS} -DCMAKE_USE_WINSSL=1 -DCURL_STATIC_CRT=1)
 endif()
 
-# Try to find optional dependencies and enable if available
-find_package(Libpsl QUIET)
-if (NOT LIBPSL_FOUND)
-    message(STATUS "libpsl not found, skipping support")
-    set(CMAKE_ARGS ${CMAKE_ARGS} -DCURL_ENABLE_LIBPSL=OFF)
-else()
-    message(STATUS "libpsl was found!!")
-endif()
-
 ExternalProject_Add(project_libcurl
     GIT_REPOSITORY    https://github.com/curl/curl.git
-    GIT_TAG           curl-8_12_1
+    GIT_TAG           curl-8_11_1
     GIT_SHALLOW       TRUE
     GIT_PROGRESS      TRUE
     PREFIX            ${CMAKE_CURRENT_BINARY_DIR}/build
-    CMAKE_ARGS        ${CMAKE_ARGS} -DCURL_ENABLE_LIBPSL=OFF -DCURL_DISABLE_COOKIES=ON
+    CMAKE_ARGS        ${CMAKE_ARGS}
     BUILD_ALWAYS      TRUE
     TEST_COMMAND      "")
