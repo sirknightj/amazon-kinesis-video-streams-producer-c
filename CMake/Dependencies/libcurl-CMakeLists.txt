@@ -29,12 +29,6 @@ set(CMAKE_ARGS
 # By default use openssl
 if (USE_MBEDTLS)
     set(CMAKE_ARGS ${CMAKE_ARGS} -DCMAKE_USE_MBEDTLS=1)
-else()
-    set(CMAKE_ARGS ${CMAKE_ARGS}
-        -DOPENSSL_ROOT_DIR=${OPEN_SRC_INSTALL_PREFIX}
-        -DOPENSSL_LIBRARIES=${OPEN_SRC_INSTALL_PREFIX}/lib
-        -DOPENSSL_INCLUDE_DIR=${OPEN_SRC_INSTALL_PREFIX}/include
-    )
 endif()
     
 if (WIN32)
@@ -45,7 +39,9 @@ endif()
 find_package(Libpsl QUIET)
 if (NOT LIBPSL_FOUND)
     message(STATUS "libpsl not found, skipping support")
-    list(APPEND CMAKE_ARGS -DCURL_ENABLE_LIBPSL=OFF)
+    set(CMAKE_ARGS ${CMAKE_ARGS} -DCURL_ENABLE_LIBPSL=OFF)
+else()
+    message(STATUS "libspl was found!!")
 endif()
 
 ExternalProject_Add(project_libcurl
