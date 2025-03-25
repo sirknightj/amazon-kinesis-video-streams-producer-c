@@ -26,21 +26,26 @@ set(CMAKE_ARGS
         -DBUILD_TESTING=OFF
         -DHTTP_ONLY=ON)
 
-if (BUILD_DEPENDENCIES AND NOT USE_MBEDTLS)
+# By default use openssl
+if (USE_MBEDTLS)
+    set(CMAKE_ARGS ${CMAKE_ARGS} -DCMAKE_USE_MBEDTLS=1)
+else()
     set(CMAKE_ARGS ${CMAKE_ARGS}
         -DOPENSSL_ROOT_DIR=${OPEN_SRC_INSTALL_PREFIX}
         -DOPENSSL_LIBRARIES=${OPEN_SRC_INSTALL_PREFIX}/lib
         -DOPENSSL_INCLUDE_DIR=${OPEN_SRC_INSTALL_PREFIX}/include
     )
 endif()
-
-# By default use openssl
-if (USE_MBEDTLS)
-    set(CMAKE_ARGS ${CMAKE_ARGS} -DCMAKE_USE_MBEDTLS=1)
-endif()
     
 if (WIN32)
     set(CMAKE_ARGS ${CMAKE_ARGS} -DCMAKE_USE_WINSSL=1 -DCURL_STATIC_CRT=1)
+endif()
+
+# Try to find optional dependencies and enable if available
+find_package(Libpsl QUIET)
+if (NOT LIBPSL_FOUND)
+    message(STATUS "libpsl not found, skipping support")
+    list(APPEND CMAKE_ARGS -DCURL_ENABLE_LIBPSL=OFF)
 endif()
 
 ExternalProject_Add(project_libcurl
