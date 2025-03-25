@@ -41,7 +41,7 @@ if (NOT LIBPSL_FOUND)
     message(STATUS "libpsl not found, skipping support")
     set(CMAKE_ARGS ${CMAKE_ARGS} -DCURL_ENABLE_LIBPSL=OFF)
 else()
-    message(STATUS "libspl was found!!")
+    message(STATUS "libpsl was found!!")
 endif()
 
 ExternalProject_Add(project_libcurl
@@ -50,6 +50,6 @@ ExternalProject_Add(project_libcurl
     GIT_SHALLOW       TRUE
     GIT_PROGRESS      TRUE
     PREFIX            ${CMAKE_CURRENT_BINARY_DIR}/build
-    CMAKE_ARGS        ${CMAKE_ARGS}
+    CMAKE_ARGS        ${CMAKE_ARGS} -DCURL_ENABLE_LIBPSL=OFF
     BUILD_ALWAYS      TRUE
     TEST_COMMAND      "")
