@@ -435,6 +435,9 @@ jobs:
     steps:
       - name: Clone repository
         uses: actions/checkout@v3
+      - name: Check CMake version
+        run: |
+          cmake --version
       - name: Build Repository
         run: |
           mkdir build && cd build
