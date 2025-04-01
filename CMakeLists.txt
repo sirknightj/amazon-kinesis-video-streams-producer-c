@@ -73,7 +73,7 @@ if(BUILD_DEPENDENCIES)
     # Needed for libcurl
     set(ENV{PKG_CONFIG_PATH}
           "$ENV{PKG_CONFIG_PATH}:${OPEN_SRC_INSTALL_PREFIX}/lib/pkgconfig")
-    set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} ${OPEN_SRC_INSTALL_PREFIX})
+    set(CMAKE_PREFIX_PATH ${OPEN_SRC_INSTALL_PREFIX} ${CMAKE_PREFIX_PATH})
     message(STATUS "PKG_CONFIG_PATH: $ENV{PKG_CONFIG_PATH}")
   endif()
 
@@ -119,6 +119,7 @@ if(BUILD_DEPENDENCIES)
                     -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
                     -DUSE_OPENSSL=${USE_OPENSSL}
                     -DUSE_MBEDTLS=${USE_MBEDTLS})
+    build_dependency(ssh2 ${BUILD_ARGS})
     build_dependency(curl ${BUILD_ARGS})
 
   endif()

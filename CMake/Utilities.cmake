@@ -41,6 +41,7 @@ function(build_dependency lib_name)
       srtp
       usrsctp
       websockets
+      ssh2
       curl
       mbedtls)
   list(FIND supported_libs ${lib_name} index)
@@ -76,12 +77,19 @@ function(build_dependency lib_name)
   configure_file(
     ./CMake/Dependencies/lib${lib_name}-CMakeLists.txt
     ${OPEN_SRC_INSTALL_PREFIX}/lib${lib_name}/CMakeLists.txt COPYONLY)
-  execute_process(
-    COMMAND ${CMAKE_COMMAND} ${build_args}
-            -DOPEN_SRC_INSTALL_PREFIX=${OPEN_SRC_INSTALL_PREFIX} -G
-            ${CMAKE_GENERATOR} .
-    RESULT_VARIABLE result
-    WORKING_DIRECTORY ${OPEN_SRC_INSTALL_PREFIX}/lib${lib_name})
+  if (${lib_name} STREQUAL "openssl")
+    execute_process(
+            COMMAND ${CMAKE_COMMAND} --debug-find-pkg=OpenSSL ${build_args}
+            -DOPEN_SRC_INSTALL_PREFIX=${OPEN_SRC_INSTALL_PREFIX} -G ${CMAKE_GENERATOR} .
+            RESULT_VARIABLE result
+            WORKING_DIRECTORY ${OPEN_SRC_INSTALL_PREFIX}/lib${lib_name})
+  else()
+    execute_process(
+            COMMAND ${CMAKE_COMMAND} ${build_args}
+            -DOPEN_SRC_INSTALL_PREFIX=${OPEN_SRC_INSTALL_PREFIX} -G ${CMAKE_GENERATOR} .
+            RESULT_VARIABLE result
+            WORKING_DIRECTORY ${OPEN_SRC_INSTALL_PREFIX}/lib${lib_name})
+  endif()
   if(result)
     message(FATAL_ERROR "CMake step for lib${lib_name} failed: ${result}")
   endif()
