@@ -77,19 +77,11 @@ function(build_dependency lib_name)
   configure_file(
     ./CMake/Dependencies/lib${lib_name}-CMakeLists.txt
     ${OPEN_SRC_INSTALL_PREFIX}/lib${lib_name}/CMakeLists.txt COPYONLY)
-  if (${lib_name} STREQUAL "openssl")
-    execute_process(
-            COMMAND ${CMAKE_COMMAND} --debug-find-pkg=OpenSSL ${build_args}
-            -DOPEN_SRC_INSTALL_PREFIX=${OPEN_SRC_INSTALL_PREFIX} -G ${CMAKE_GENERATOR} .
-            RESULT_VARIABLE result
-            WORKING_DIRECTORY ${OPEN_SRC_INSTALL_PREFIX}/lib${lib_name})
-  else()
-    execute_process(
-            COMMAND ${CMAKE_COMMAND} ${build_args}
-            -DOPEN_SRC_INSTALL_PREFIX=${OPEN_SRC_INSTALL_PREFIX} -G ${CMAKE_GENERATOR} .
-            RESULT_VARIABLE result
-            WORKING_DIRECTORY ${OPEN_SRC_INSTALL_PREFIX}/lib${lib_name})
-  endif()
+  execute_process(
+          COMMAND ${CMAKE_COMMAND} ${build_args}
+          -DOPEN_SRC_INSTALL_PREFIX=${OPEN_SRC_INSTALL_PREFIX} -G ${CMAKE_GENERATOR} .
+          RESULT_VARIABLE result
+          WORKING_DIRECTORY ${OPEN_SRC_INSTALL_PREFIX}/lib${lib_name})
   if(result)
     message(FATAL_ERROR "CMake step for lib${lib_name} failed: ${result}")
   endif()
