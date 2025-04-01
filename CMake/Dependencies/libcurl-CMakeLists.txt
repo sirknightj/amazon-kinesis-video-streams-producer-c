@@ -33,7 +33,7 @@ endif()
 
 # Tell OpenSSL to find all its deps in open-source directory
 if (NOT OPENSSL_ROOT_DIR)
-    set(CMAKE_ARGS ${CMAKE_ARGS} -DCMAKE_PREFIX_PATH=${OPEN_SRC_INSTALL_PREFIX}
+    set(CMAKE_ARGS ${CMAKE_ARGS} -DCMAKE_PREFIX_PATH=${OPEN_SRC_INSTALL_PREFIX})
 endif()
 
 if (WIN32)
