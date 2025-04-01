@@ -32,13 +32,14 @@ if (USE_MBEDTLS)
     set(CMAKE_ARGS ${CMAKE_ARGS} -DCMAKE_USE_MBEDTLS=1)
 endif()
 
-# Tell OpenSSL to find all its deps in open-source directory
+# Tell Curl to find all its deps (OpenSSL) in open-source directory
+# (except when using pre-installed OpenSSL)
 if (NOT OPENSSL_ROOT_DIR)
     set(CMAKE_ARGS ${CMAKE_ARGS} -DCMAKE_PREFIX_PATH=${OPEN_SRC_INSTALL_PREFIX})
 endif()
 
 if (WIN32)
-    set(CMAKE_ARGS ${CMAKE_ARGS} -DCMAKE_USE_WINSSL=1 -DCURL_STATIC_CRT=1)
+    set(CMAKE_ARGS ${CMAKE_ARGS} -DCMAKE_USE_SCHANNEL=1 -DCURL_STATIC_CRT=1)
 endif()
 
 ExternalProject_Add(project_libcurl
