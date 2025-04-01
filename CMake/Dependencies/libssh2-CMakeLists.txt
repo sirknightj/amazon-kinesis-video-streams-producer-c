@@ -18,7 +18,7 @@ set(CMAKE_ARGS
 
 ExternalProject_Add(project_libssh2
     GIT_REPOSITORY    https://github.com/libssh2/libssh2.git
-    GIT_TAG           libssh2-1.11.0
+    GIT_TAG           libssh2-1.11.1
     GIT_SHALLOW       TRUE
     GIT_PROGRESS      TRUE
     PREFIX            ${CMAKE_CURRENT_BINARY_DIR}/build
