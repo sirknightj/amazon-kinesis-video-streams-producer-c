@@ -10,10 +10,10 @@ if (WIN32)
     set(BUILD_COMMAND ${NMAKE_EXE})
     set(INSTALL_COMMAND ${NMAKE_EXE} install_sw)
   elseif (MSBUILD_EXE)
-    set(BUILD_COMMAND ${MSBUILD_EXE} ${CMAKE_CURRENT_BINARY_DIR}/build/src/project_libopenssl/openssl.sln /p:Configuration=Release /p:Platform=${CMAKE_SYSTEM_PROCESSOR})
-    set(INSTALL_COMMAND ${MSBUILD_EXE} ${CMAKE_CURRENT_BINARY_DIR}/build/src/project_libopenssl/openssl.sln /p:Configuration=Release /p:Platform=${CMAKE_SYSTEM_PROCESSOR} /target:INSTALL)
+    set(BUILD_COMMAND ${MSBUILD_EXE} ${CMAKE_CURRENT_BINARY_DIR}/build/src/project_libopenssl/openssl.sln /p:Configuration=${CMAKE_BUILD_TYPE} /p:Platform=${CMAKE_SYSTEM_PROCESSOR})
+    set(INSTALL_COMMAND ${MSBUILD_EXE} ${CMAKE_CURRENT_BINARY_DIR}/build/src/project_libopenssl/openssl.sln /p:Configuration=${CMAKE_BUILD_TYPE} /p:Platform=${CMAKE_SYSTEM_PROCESSOR} /target:INSTALL)
   else()
-    message(FATAL_ERROR "No suitable build tool found (nmake or msbuild required). You probably need to invoke 'C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat' to add msbuild to your PATH")
+    message(FATAL_ERROR "No suitable build tool found (nmake or msbuild required)")
   endif()
 
   # Determine the target architecture
