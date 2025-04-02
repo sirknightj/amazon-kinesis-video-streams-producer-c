@@ -3,8 +3,36 @@ cmake_minimum_required(VERSION 3.6.3)
 project(libopenssl-download LANGUAGES C)
 
 if (WIN32)
-  SET(CONFIGURE_COMMAND perl ${CMAKE_CURRENT_BINARY_DIR}/build/src/project_libopenssl/Configure VC-WIN64A no-asm --prefix=${OPEN_SRC_INSTALL_PREFIX} --openssldir=${OPEN_SRC_INSTALL_PREFIX})
+  find_program(NMAKE_EXE NAMES nmake)
+  find_program(MSBUILD_EXE NAMES msbuild)
+
+  if (NMAKE_EXE)
+    set(BUILD_COMMAND ${NMAKE_EXE})
+    set(INSTALL_COMMAND ${NMAKE_EXE} install_sw)
+  elseif (MSBUILD_EXE)
+    set(BUILD_COMMAND ${MSBUILD_EXE} ${CMAKE_CURRENT_BINARY_DIR}/build/src/project_libopenssl/openssl.sln /p:Configuration=Release /p:Platform=${CMAKE_SYSTEM_PROCESSOR})
+    set(INSTALL_COMMAND ${MSBUILD_EXE} ${CMAKE_CURRENT_BINARY_DIR}/build/src/project_libopenssl/openssl.sln /p:Configuration=Release /p:Platform=${CMAKE_SYSTEM_PROCESSOR} /target:INSTALL)
+  else()
+    message(FATAL_ERROR "No suitable build tool found (nmake or msbuild required)")
+  endif()
+
+  # Determine the target architecture
+  if (CMAKE_SYSTEM_PROCESSOR MATCHES "AMD64|x86_64")
+    set(OPENSSL_TARGET "VC-WIN64A")
+  elseif (CMAKE_SYSTEM_PROCESSOR MATCHES "ARM64|aarch64")
+    set(OPENSSL_TARGET "VC-WIN64-ARM")
+  elseif (CMAKE_SYSTEM_PROCESSOR MATCHES "x86")
+    set(OPENSSL_TARGET "VC-WIN32")
+  else()
+    message(FATAL_ERROR "Unsupported architecture: ${CMAKE_SYSTEM_PROCESSOR}")
+  endif()
+
+  SET(CONFIGURE_COMMAND perl ${CMAKE_CURRENT_BINARY_DIR}/build/src/project_libopenssl/Configure ${OPENSSL_TARGET} no-asm --prefix=${OPEN_SRC_INSTALL_PREFIX} --openssldir=${OPEN_SRC_INSTALL_PREFIX})
 else()
+  find_program(MAKE_EXE NAMES make)
+  set(BUILD_COMMAND ${MAKE_EXE} -j)
+  set(INSTALL_COMMAND ${MAKE_EXE} install_sw)
+
   if (BUILD_STATIC)
     SET(OPENSSL_EXTRA ${OPENSSL_EXTRA} no-shared no-dso)
   endif()
@@ -28,8 +56,8 @@ ExternalProject_Add(project_libopenssl
     GIT_TAG           OpenSSL_1_1_1t
     PREFIX            ${CMAKE_CURRENT_BINARY_DIR}/build
     CONFIGURE_COMMAND ${CONFIGURE_COMMAND}
-    BUILD_COMMAND     cmake --build . --config ${CMAKE_BUILD_TYPE}
+    BUILD_COMMAND     ${BUILD_COMMAND}
     BUILD_IN_SOURCE   TRUE
-    INSTALL_COMMAND   cmake --install . --config ${CMAKE_BUILD_TYPE}
+    INSTALL_COMMAND   ${INSTALL_COMMAND}
     TEST_COMMAND      ""
 )
