@@ -244,7 +244,7 @@ jobs:
       - name: Install dependencies
         run: |
           apt-get update
-          apt-get install -y git cmake build-essential pkg-config clang-14
+          apt-get install -y git cmake build-essential pkg-config clang
       - name: Build repository
         run: |
           mkdir build && cd build
@@ -279,7 +279,7 @@ jobs:
       - name: Install dependencies
         run: |
           apt-get update
-          apt-get install -y git cmake build-essential pkg-config clang-14
+          apt-get install -y git cmake build-essential pkg-config clang
       - name: Build repository
         run: |
           mkdir build && cd build
