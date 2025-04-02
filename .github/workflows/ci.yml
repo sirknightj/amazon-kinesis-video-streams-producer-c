@@ -191,7 +191,8 @@ jobs:
           ./tst/producer_test
 
   linux-gcc-code-coverage:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
+    container: public.ecr.aws/ubuntu/ubuntu:22.04_stable
     env:
       AWS_KVS_LOG_LEVEL: 2
     permissions:
@@ -199,7 +200,11 @@ jobs:
       contents: read
     steps:
       - name: Clone repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
+      - name: Install dependencies
+        run: |
+          apt-get update
+          apt-get install -y git cmake build-essential pkg-config
       - name: Build repository
         run: |
           mkdir build && cd build
@@ -224,7 +229,8 @@ jobs:
           bash <(curl -s https://codecov.io/bash)
 
   address-sanitizer:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
+    container: public.ecr.aws/ubuntu/ubuntu:22.04_stable
     permissions:
       id-token: write
       contents: read
@@ -234,7 +240,11 @@ jobs:
       AWS_KVS_LOG_LEVEL: 2
     steps:
       - name: Clone repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
+      - name: Install dependencies
+        run: |
+          apt-get update
+          apt-get install -y git cmake build-essential pkg-config clang-14
       - name: Build repository
         run: |
           mkdir build && cd build
@@ -254,7 +264,8 @@ jobs:
           timeout --signal=SIGABRT 150m ./tst/producer_test --gtest_break_on_failure
 
   undefined-behavior-sanitizer:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
+    container: public.ecr.aws/ubuntu/ubuntu:22.04_stable
     permissions:
       id-token: write
       contents: read
@@ -264,7 +275,11 @@ jobs:
       AWS_KVS_LOG_LEVEL: 2
     steps:
       - name: Clone repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
+      - name: Install dependencies
+        run: |
+          apt-get update
+          apt-get install -y git cmake build-essential pkg-config clang-14
       - name: Build repository
         run: |
           mkdir build && cd build
