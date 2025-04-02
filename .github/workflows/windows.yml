@@ -35,6 +35,9 @@ jobs:
         run: |
           mkdir build
           cd build
+          echo "$PATH"
+          $env:PATH += ";C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin"
+          Get-Command msbuild
           cmake .. -DBUILD_TEST=ON -G "Visual Studio 17 2022" || exit /b 1
           cmake --build . --config Release --verbose || exit /b 1
       - name: Configure AWS Credentials
