@@ -34,6 +34,7 @@ jobs:
         run: |
           mkdir build
           cd build
+          call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
           cmake .. -DBUILD_TEST=ON -G "Visual Studio 17 2022" || exit /b 1
           cmake --build . --config Release --verbose || exit /b 1
       - name: Configure AWS Credentials
