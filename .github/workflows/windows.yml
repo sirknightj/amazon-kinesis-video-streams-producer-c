@@ -21,25 +21,38 @@ jobs:
     steps:
       - name: Clone repository
         uses: actions/checkout@v4
+      - name: Move repository to shorter location
+        run: |
+          mkdir D:\work || exit /b 1
+          mkdir D:\work\producer || exit /b 1
+          mv * D:\work\producer
       - name: Install dependencies
         run: |
           choco install nasm strawberryperl pkgconfiglite
+          echo "PATH=$env:PATH;C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin" >> $GITHUB_ENV
       - name: Build repository
+        working-directory: D:\work\producer
         run: |
-          $env:Path += ';C:\Strawberry\perl\site\bin;C:\Strawberry\perl\bin;C:\Strawberry\c\bin;C:\Program Files\NASM;D:\a\amazon-kinesis-video-streams-producer-c\amazon-kinesis-video-streams-producer-c\open-source\lib;D:\a\amazon-kinesis-video-streams-producer-c\amazon-kinesis-video-streams-producer-c\open-source\bin'
-          git config --system core.longpaths true
-          .github/build_windows.bat
+          mkdir build
+          cd build
+          echo "$PATH"
+          $env:PATH += ";C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin"
+          Get-Command msbuild
+          cmake .. -DBUILD_TEST=ON -G "Visual Studio 17 2022" || exit /b 1
+          cmake --build . --config Release --verbose || exit /b 1
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
           role-session-name: ${{ secrets.AWS_ROLE_SESSION_NAME }}
           aws-region: ${{ secrets.AWS_REGION }}
-          role-duration-seconds: 10800
+          role-duration-seconds: 3600
       - name: Run tests
+        working-directory: D:\work\producer\build
         run: |
-          $env:Path += ';C:\Strawberry\perl\site\bin;C:\Strawberry\perl\bin;C:\Strawberry\c\bin;C:\Program Files\NASM;D:\a\amazon-kinesis-video-streams-producer-c\amazon-kinesis-video-streams-producer-c\open-source\lib;D:\a\amazon-kinesis-video-streams-producer-c\amazon-kinesis-video-streams-producer-c\open-source\bin'
-          & "D:\a\amazon-kinesis-video-streams-producer-c\amazon-kinesis-video-streams-producer-c\build\tst\producer_test.exe" --gtest_filter="-ProducerFunctionalityTest.pressure_on_buffer_duration_fail_new_connection_at_token_rotation"
+          ls
+          ls Release
+          & "D:\work\producer\build\tst\producer_test.exe" --gtest_filter="-ProducerFunctionalityTest.pressure_on_buffer_duration_fail_new_connection_at_token_rotation"
 
   sample-checks:
     name: ${{ matrix.sample-executable }}
@@ -75,7 +88,7 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
           role-session-name: ${{ secrets.AWS_ROLE_SESSION_NAME }}
           aws-region: ${{ secrets.AWS_REGION }}
-          role-duration-seconds: 10800
+          role-duration-seconds: 3600
       - name: Run ${{ matrix.sample }}
         working-directory: ./build
         run: |
@@ -94,18 +107,38 @@ jobs:
           $exePath = Join-Path $PWD ${{ matrix.sample-executable }}
           & $exePath demo-stream-producer-c-windows-ci-${{ matrix.sample-executable }}
 
-      - name: Verify MKV dump
+      - name: Save MKV file list
         working-directory: ./build
         run: |
-          $env:PATH += ";C:\Program Files\MKVToolNix"
           $mkvFiles = Get-ChildItem -Path $env:KVS_DEBUG_DUMP_DATA_FILE_DIR -Filter *.mkv
+          
           if ($mkvFiles.Count -eq 0) {
             Write-Error "No MKV files found in $env:KVS_DEBUG_DUMP_DATA_FILE_DIR"
             exit 1
           }
-      
-          # Run mkvinfo on each MKV file
+          
+          # Save the MKV file list to GITHUB_ENV
+          $fileList = $mkvFiles.FullName -join "`n"
+          "MKV_FILES=$fileList" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8
+
+      - name: Print MKV dump (non-verbose)
+        working-directory: ./build
+        run: |
+          $env:PATH += ";C:\Program Files\MKVToolNix"
+          $mkvFiles = $env:MKV_FILES -split "`n"
+          
           foreach ($file in $mkvFiles) {
-            Write-Output "Verifying $($file.FullName) with mkvinfo (verbose and hexdump):"
-            mkvinfo.exe -v -X "$($file.FullName)"
+            Write-Output "Verifying $file with mkvinfo:"
+            mkvinfo.exe -v "$file"
+          }
+
+      - name: Print MKV dump (verbose)
+        working-directory: ./build
+        run: |
+          $env:PATH += ";C:\Program Files\MKVToolNix"
+          $mkvFiles = $env:MKV_FILES -split "`n"
+          
+          foreach ($file in $mkvFiles) {
+            Write-Output "Verifying $file with mkvinfo (hexdump):"
+            mkvinfo.exe -v -X "$file"
           }
