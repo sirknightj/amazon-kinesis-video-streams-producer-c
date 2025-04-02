@@ -21,14 +21,21 @@ jobs:
     steps:
       - name: Clone repository
         uses: actions/checkout@v4
+      - name: Move repository to shorter location
+        run: |
+          mkdir D:\work || exit /b 1
+          mkdir D:\work\producer || exit /b 1
+          mv * D:\work\producer
       - name: Install dependencies
         run: |
           choco install nasm strawberryperl pkgconfiglite
       - name: Build repository
+        working-directory: D:\work\producer
         run: |
-          $env:Path += ';C:\Strawberry\perl\site\bin;C:\Strawberry\perl\bin;C:\Strawberry\c\bin;C:\Program Files\NASM;D:\a\amazon-kinesis-video-streams-producer-c\amazon-kinesis-video-streams-producer-c\open-source\lib;D:\a\amazon-kinesis-video-streams-producer-c\amazon-kinesis-video-streams-producer-c\open-source\bin'
-          git config --system core.longpaths true
-          .github/build_windows.bat
+          mkdir build
+          cd build
+          cmake .. -DBUILD_TEST=ON -G "Visual Studio 17 2022" || exit /b 1
+          cmake --build . --config Release --verbose || exit /b 1
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -37,9 +44,11 @@ jobs:
           aws-region: ${{ secrets.AWS_REGION }}
           role-duration-seconds: 10800
       - name: Run tests
+        working-directory: D:\work\producer\build
         run: |
-          $env:Path += ';C:\Strawberry\perl\site\bin;C:\Strawberry\perl\bin;C:\Strawberry\c\bin;C:\Program Files\NASM;D:\a\amazon-kinesis-video-streams-producer-c\amazon-kinesis-video-streams-producer-c\open-source\lib;D:\a\amazon-kinesis-video-streams-producer-c\amazon-kinesis-video-streams-producer-c\open-source\bin'
-          & "D:\a\amazon-kinesis-video-streams-producer-c\amazon-kinesis-video-streams-producer-c\build\tst\producer_test.exe" --gtest_filter="-ProducerFunctionalityTest.pressure_on_buffer_duration_fail_new_connection_at_token_rotation"
+          ls
+          ls Release
+          & "D:\work\producer\build\tst\producer_test.exe" --gtest_filter="-ProducerFunctionalityTest.pressure_on_buffer_duration_fail_new_connection_at_token_rotation"
 
   sample-checks:
     name: ${{ matrix.sample-executable }}
