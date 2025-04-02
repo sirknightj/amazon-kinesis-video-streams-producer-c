@@ -3,10 +3,8 @@ cmake_minimum_required(VERSION 3.6.3)
 project(libopenssl-download LANGUAGES C)
 
 if (WIN32)
-  find_program(MAKE_EXE NAMES nmake)
   SET(CONFIGURE_COMMAND perl ${CMAKE_CURRENT_BINARY_DIR}/build/src/project_libopenssl/Configure VC-WIN64A no-asm --prefix=${OPEN_SRC_INSTALL_PREFIX} --openssldir=${OPEN_SRC_INSTALL_PREFIX})
 else()
-  find_program(MAKE_EXE NAMES make)
   if (BUILD_STATIC)
     SET(OPENSSL_EXTRA ${OPENSSL_EXTRA} no-shared no-dso)
   endif()
@@ -30,8 +28,8 @@ ExternalProject_Add(project_libopenssl
     GIT_TAG           OpenSSL_1_1_1t
     PREFIX            ${CMAKE_CURRENT_BINARY_DIR}/build
     CONFIGURE_COMMAND ${CONFIGURE_COMMAND}
-    BUILD_COMMAND     ${MAKE_EXE}
+    BUILD_COMMAND     cmake --build . --config ${CMAKE_BUILD_TYPE}
     BUILD_IN_SOURCE   TRUE
-    INSTALL_COMMAND   ${MAKE_EXE} install_sw
+    INSTALL_COMMAND   cmake --install . --config ${CMAKE_BUILD_TYPE}
     TEST_COMMAND      ""
 )
