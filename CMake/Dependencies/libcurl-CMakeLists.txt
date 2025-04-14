@@ -4,9 +4,9 @@ project(libcurl-download LANGUAGES C)
 
 find_program(MAKE_EXE NAMES make)
 
-if (DEFINED CMAKE_OSX_SYSROOT AND NOT CMAKE_OSX_SYSROOT STREQUAL "")
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -isysroot${CMAKE_OSX_SYSROOT}")
-endif()
+#if (DEFINED CMAKE_OSX_SYSROOT AND NOT CMAKE_OSX_SYSROOT STREQUAL "")
+#  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -isysroot${CMAKE_OSX_SYSROOT}")
+#endif()
 
 include(ExternalProject)
 
@@ -21,8 +21,6 @@ set(CMAKE_ARGS
         -DENABLE_CURL_MANUAL=OFF
         -DBUILD_LIBCURL_DOCS=OFF
         -DBUILD_TESTING=OFF
-        -DUSE_APPLE_IDN=ON
-        -DUSE_LIBIDN2=OFF
         -DHTTP_ONLY=ON)
 
 # Note: Future Curl versions introduce BUILD_STATIC_LIBS flag
@@ -56,6 +54,12 @@ endif()
 
 if (WIN32)
     set(CMAKE_ARGS ${CMAKE_ARGS} -DCMAKE_USE_SCHANNEL=1 -DCURL_STATIC_CRT=1)
+endif()
+
+if(APPLE)
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mmacosx-version-min=11.0")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mmacosx-version-min=11.0")
+    add_definitions(-Wno-deprecated-declarations)
 endif()
 
 ExternalProject_Add(project_libcurl
