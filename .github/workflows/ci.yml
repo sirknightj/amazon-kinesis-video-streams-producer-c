@@ -293,7 +293,9 @@ jobs:
           make -j
 
       - name: Check libCurl
-        run: ./scripts/check-dependencies.sh ./open-source/lib
+        run: |
+          apt-get install -y file
+          ./scripts/check-dependencies.sh ./open-source/lib
 
       - name: Check samples
         run: ./scripts/check-dependencies.sh ./build
