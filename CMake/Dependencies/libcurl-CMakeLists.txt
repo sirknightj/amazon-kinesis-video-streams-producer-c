@@ -22,6 +22,7 @@ set(CMAKE_ARGS
         -DBUILD_LIBCURL_DOCS=OFF
         -DBUILD_TESTING=OFF
         -DUSE_APPLE_IDN=ON
+        -DUSE_LIBIDN2=OFF
         -DHTTP_ONLY=ON)
 
 # Note: Future Curl versions introduce BUILD_STATIC_LIBS flag
