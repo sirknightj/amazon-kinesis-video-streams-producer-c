@@ -299,6 +299,7 @@ jobs:
           make -j
 
       - name: Check libCurl
+        if: ${{ matrix.build-configuration == 'curl' }}
         working-directory: ./open-source/lib
         run: |
           set -x
