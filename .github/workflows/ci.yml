@@ -26,8 +26,9 @@ jobs:
           - name: Apple Silicon
             image: macos-15
         openssl:
-          - preinstalled
+          - specific-preinstalled
           - from-source
+          - deps-off
       fail-fast: false
 
     name: ${{ matrix.cpu.name }} Mac-${{ matrix.compiler.name }}-${{ matrix.openssl }}
@@ -51,13 +52,18 @@ jobs:
           cmake-version: '3.x'
 
       - name: Setup envs for including OpenSSL locally
-        if: ${{ matrix.openssl == 'preinstalled' }}
+        if: ${{ matrix.openssl == 'specific-preinstalled' }}
         run: |
           OPENSSL_PATH=$(brew --prefix openssl@3)
           echo "LDFLAGS=-L$OPENSSL_PATH/lib" >> $GITHUB_ENV
           echo "CPPFLAGS=-I$OPENSSL_PATH/include" >> $GITHUB_ENV
           echo "OPENSSL_ROOT_DIR=$OPENSSL_PATH" >> $GITHUB_ENV
           echo "CMAKE_FLAGS_EXTRA=-DLOCAL_OPENSSL_BUILD=ON" >> $GITHUB_ENV
+
+      - name: Set CMake flags for Dependencies=OFF
+        if: ${{ matrix.openssl == 'deps-off' }}
+        run: |
+          echo "CMAKE_FLAGS_EXTRA=-DBUILD_DEPENDENCIES=OFF" >> $GITHUB_ENV
 
       - name: Build repository
         run: |
