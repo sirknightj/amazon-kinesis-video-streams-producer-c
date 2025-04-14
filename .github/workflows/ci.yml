@@ -292,6 +292,12 @@ jobs:
           cmake .. -DBUILD_TEST=ON ${{ matrix.build-configuration.cmake-args }}
           make -j
 
+      - name: Check libCurl
+        run: ./scripts/check-dependencies.sh ./open-source/lib
+
+      - name: Check samples
+        run: ./scripts/check-dependencies.sh ./build
+
       - name: Configure AWS Credentials
         # Producer-C only has CURL implementation
         if: ${{ matrix.build-configuration.name == 'curl' }}
@@ -437,12 +443,6 @@ jobs:
           mkdir build && cd build
           cmake .. -DBUILD_TEST=TRUE -DKVS_DEFAULT_STACK_SIZE=65536
           make -j$(nproc)
-
-      - name: Check libCurl
-        working-directory: ./open-source/lib
-        run: |
-          set -x
-          readelf -d libcurl.so | grep -i "runpath"
 
       - name: Run tests with expected failure
         run: |
