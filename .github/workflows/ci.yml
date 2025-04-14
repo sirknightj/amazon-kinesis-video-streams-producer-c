@@ -521,6 +521,12 @@ jobs:
           mkdir build && cd build
           cmake .. -DBUILD_TEST=TRUE -DKVS_DEFAULT_STACK_SIZE=65536
           make -j$(nproc)
+      - name: Check libCurl
+        working-directory: ./open-source/lib
+        run: |
+          set -x
+          otool -l libcurl.so
+          readelf -d libcurl.so
       - name: Run tests with expected failure
         run: |
           set +e
