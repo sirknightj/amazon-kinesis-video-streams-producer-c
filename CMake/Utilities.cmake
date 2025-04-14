@@ -70,10 +70,6 @@ function(build_dependency lib_name)
   # library building cmake.
   set(build_args ${ARGN})
 
-  if (${lib_name} STREQUAL "curl")
-    set(build_args ${ARGN} -DROOT_PROJECT_SOURCE_DIR=${KINESIS_VIDEO_PRODUCER_C_SRC})
-  endif()
-
   file(REMOVE_RECURSE ${OPEN_SRC_INSTALL_PREFIX}/lib${lib_name})
 
   # build library

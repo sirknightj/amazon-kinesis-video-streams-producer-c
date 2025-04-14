@@ -146,64 +146,50 @@ jobs:
   mac-os-build-gcc-local-openssl:
     # https://github.com/curl/curl/commit/c349bd668c91f2484ae21c0f361ddf497143093c
     runs-on: macos-14
-    permissions:
-      id-token: write
-      contents: read
-    env:
-      CC: gcc-14
-      CXX: g++-14
-      AWS_KVS_LOG_LEVEL: 2
-      LDFLAGS: -L/usr/local/opt/openssl@3/lib
-      CPPFLAGS: -I/usr/local/opt/openssl@3/include
-      OPENSSL_ROOT_DIR: /usr/local/opt/openssl@3/
-    steps:
-      - name: Clone repository
-        uses: actions/checkout@v3
-      - name: Setup cmake
-        uses: jwlawson/actions-setup-cmake@v2
-        with:
-          cmake-version: '3.x'
-      - name: Build repository
-        run: |
-          brew info openssl
-          mkdir build && cd build
-          cmake .. -DBUILD_TEST=TRUE -DLOCAL_OPENSSL_BUILD=ON
-          make
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
-          role-session-name: ${{ secrets.AWS_ROLE_SESSION_NAME }}
-          aws-region: ${{ secrets.AWS_REGION }}
-          role-duration-seconds: 3600
-      - name: Run tests
-        run: |
-          cd build
-          ./tst/producer_test
 
-  mac-os-build-clang-local-openssl:
-    runs-on: macos-13
-    env:
-      AWS_KVS_LOG_LEVEL: 2
-      LDFLAGS: -L/usr/local/opt/openssl@3/lib
-      CPPFLAGS: -I/usr/local/opt/openssl@3/include
-      OPENSSL_ROOT_DIR: /usr/local/opt/openssl@3/
+    strategy:
+      matrix:
+        compiler:
+          - name: Clang-15
+            cc: clang-
+            cxx: clang++
+          - name: gcc-14
+            cc: gcc-14
+            cxx: g++-14
+
+    name: ${{ runner.name }}-${{ matrix.compiler.name }}-preinstalled-openssl
+
     permissions:
       id-token: write
       contents: read
+    env:
+      AWS_KVS_LOG_LEVEL: 2
+      CC: ${{ matrix.compiler.cc }}
+      CXX: ${{ matrix.compiler.cxx }}
+
     steps:
       - name: Clone repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
+
       - name: Setup cmake
         uses: jwlawson/actions-setup-cmake@v2
         with:
           cmake-version: '3.x'
+
+      - name: Setup envs
+        run:
+          OPENSSL_PATH=$(brew --prefix openssl@3)
+          echo "LDFLAGS=-L$OPENSSL_PATH/lib" >> $GITHUB_ENV
+          echo "CPPFLAGS=-I$OPENSSL_PATH/include" >> $GITHUB_ENV
+          echo "OPENSSL_ROOT_DIR=$OPENSSL_PATH" >> $GITHUB_ENV
+
       - name: Build repository
         run: |
           brew info openssl
           mkdir build && cd build
-          cmake .. -DBUILD_TEST=TRUE -DCOMPILER_WARNINGS=TRUE -DLOCAL_OPENSSL_BUILD=ON
-          make
+          cmake .. -DBUILD_TEST=ON -DLOCAL_OPENSSL_BUILD=ON
+          make -j
+
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -211,9 +197,10 @@ jobs:
           role-session-name: ${{ secrets.AWS_ROLE_SESSION_NAME }}
           aws-region: ${{ secrets.AWS_REGION }}
           role-duration-seconds: 3600
+
       - name: Run tests
+        working-directory: ./build
         run: |
-          cd build
           ./tst/producer_test
 
   linux-gcc-code-coverage:
