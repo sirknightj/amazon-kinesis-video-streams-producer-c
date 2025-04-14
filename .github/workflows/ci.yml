@@ -384,7 +384,7 @@ jobs:
             image: public.ecr.aws/ubuntu/ubuntu:22.04_stable
           - name: Ubuntu 24.04
             image: public.ecr.aws/ubuntu/ubuntu:24.04_stable
-        configuration:
+        build-configuration:
           - name: curl
             cmake-args: "-DBUILD_COMMON_CURL=ON -DBUILD_COMMON_LWS=OFF"
           - name: lws
@@ -393,9 +393,9 @@ jobs:
 
     runs-on: ubuntu-latest
     container:
-      image: ${{ matrix.container }}
+      image: ${{ matrix.container.image }}
 
-    name: ${{ matrix.container.name }}-gcc-${{ matrix.configuration.name }}
+    name: ${{ matrix.container.name }}-gcc-${{ matrix.build-configuration.name }}
 
     env:
       DEBIAN_FRONTEND: noninteractive
@@ -423,7 +423,7 @@ jobs:
       - name: Build repository
         run: |
           mkdir build && cd build
-          cmake .. -DBUILD_TEST=ON
+          cmake .. -DBUILD_TEST=ON ${{ matrix.build-configuration.cmake-args }}
           make -j
 
       - name: Configure AWS Credentials
