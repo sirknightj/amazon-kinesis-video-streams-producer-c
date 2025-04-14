@@ -29,7 +29,7 @@ jobs:
           - preinstalled
           - from-source
 
-    name: ${{ runner.name }}-${{ matrix.compiler.name }}-preinstalled-openssl
+    name: ${{ matrix.cpu.name }} Mac-${{ matrix.compiler.name }}-preinstalled-openssl
     runs-on: ${{ matrix.cpu.image }}
 
     permissions:
