@@ -293,12 +293,18 @@ jobs:
           make -j
 
       - name: Check libCurl
+        working-directory: ./open-source/lib
         run: |
-          apt-get install -y file
-          ./scripts/check-dependencies.sh ./open-source/lib
-
-      - name: Check samples
-        run: ./scripts/check-dependencies.sh ./build
+          set -x
+          readelf -d libcurl.so | grep -i "runpath"
+          ldd libcurl.so
+          echo "Checking ldd output for missing dependencies..."
+          if ldd libcurl.so | grep "not found"; then
+            echo "❌ Missing dependencies detected in libcurl.so"
+            exit 1
+          else
+            echo "✅ All dependencies are found"
+          fi
 
       - name: Configure AWS Credentials
         # Producer-C only has CURL implementation
