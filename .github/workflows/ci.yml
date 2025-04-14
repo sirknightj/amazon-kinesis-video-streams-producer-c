@@ -11,7 +11,8 @@ on:
       - master
 jobs:
   mac-os-build-gcc:
-    runs-on: macos-13
+    # https://github.com/curl/curl/commit/c349bd668c91f2484ae21c0f361ddf497143093c
+    runs-on: macos-14
     permissions:
       id-token: write
       contents: read
@@ -143,7 +144,8 @@ jobs:
           ./tst/producer_test
 
   mac-os-build-gcc-local-openssl:
-    runs-on: macos-13
+    # https://github.com/curl/curl/commit/c349bd668c91f2484ae21c0f361ddf497143093c
+    runs-on: macos-14
     permissions:
       id-token: write
       contents: read
