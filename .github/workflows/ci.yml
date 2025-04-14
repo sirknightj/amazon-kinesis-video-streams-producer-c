@@ -30,7 +30,7 @@ jobs:
           - from-source
       fail-fast: false
 
-    name: ${{ matrix.cpu.name }} Mac-${{ matrix.compiler.name }}-${{ matrix.compiler.name }}-preinstalled-openssl
+    name: ${{ matrix.cpu.name }} Mac-${{ matrix.compiler.name }}-${{ matrix.openssl }}
     runs-on: ${{ matrix.cpu.image }}
 
     permissions:
