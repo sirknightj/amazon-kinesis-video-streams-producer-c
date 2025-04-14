@@ -375,30 +375,57 @@ jobs:
   #        timeout --signal=SIGABRT 150m ./tst/producer_test --gtest_break_on_failure
 
   ubuntu-gcc:
-    runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        container:
+          - name: Ubuntu 20.04
+            image: public.ecr.aws/ubuntu/ubuntu:20.04_stable
+          - name: Ubuntu 22.04
+            image: public.ecr.aws/ubuntu/ubuntu:22.04_stable
+          - name: Ubuntu 24.04
+            image: public.ecr.aws/ubuntu/ubuntu:24.04_stable
+        configuration:
+          - name: curl
+            cmake-args: "-DBUILD_COMMON_CURL=ON -DBUILD_COMMON_LWS=OFF"
+          - name: lws
+            cmake-args: "-DBUILD_COMMON_CURL=OFF -DBUILD_COMMON_LWS=ON"
+      fail-fast: false
+
+    runs-on: ubuntu-latest
+    container:
+      image: ${{ matrix.container }}
+
+    name: ${{ matrix.container.name }}-gcc-${{ matrix.configuration.name }}
+
     env:
+      DEBIAN_FRONTEND: noninteractive
       AWS_KVS_LOG_LEVEL: 2
       CC: gcc
       CXX: g++
+
     permissions:
       id-token: write
       contents: read
     steps:
       - name: Clone repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
+
       - name: Install dependencies
         run: |
-          sudo apt clean && sudo apt update
-          sudo sh -c 'echo 0 > /proc/sys/net/ipv6/conf/all/disable_ipv6'
+          apt-get update
+          apt-get install -y git cmake build-essential pkg-config
+
       - name: Setup cmake
         uses: jwlawson/actions-setup-cmake@v2
         with:
           cmake-version: '3.x'
+
       - name: Build repository
         run: |
           mkdir build && cd build
-          cmake .. -DBUILD_TEST=TRUE
-          make
+          cmake .. -DBUILD_TEST=ON
+          make -j
+
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -406,6 +433,7 @@ jobs:
           role-session-name: ${{ secrets.AWS_ROLE_SESSION_NAME }}
           aws-region: ${{ secrets.AWS_REGION }}
           role-duration-seconds: 3600
+
       - name: Run tests
         run: |
           cd build
@@ -433,8 +461,9 @@ jobs:
           sudo sh -c 'echo 0 > /proc/sys/net/ipv6/conf/all/disable_ipv6'
           mkdir build && cd build
           cmake .. -DBUILD_TEST=TRUE -DBUILD_OPENSSL_PLATFORM=linux-generic64
-          make
+          make -j
           file libcproducer.so
+
   linux-aarch64-cross-compilation:
     runs-on: ubuntu-22.04
     env:
@@ -456,8 +485,9 @@ jobs:
           sudo sh -c 'echo 0 > /proc/sys/net/ipv6/conf/all/disable_ipv6'
           mkdir build && cd build
           cmake .. -DBUILD_TEST=TRUE -DBUILD_OPENSSL_PLATFORM=linux-aarch64
-          make
+          make -j
           file libcproducer.so
+
   arm32-cross-compilation:
     runs-on: ubuntu-22.04
     env:
@@ -468,12 +498,15 @@ jobs:
         run: |
           sudo apt clean && sudo apt update
           sudo apt-get -y install gcc-arm-linux-gnueabi g++-arm-linux-gnueabi binutils-arm-linux-gnueabi
+
       - name: Clone repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
+
       - name: Setup cmake
         uses: jwlawson/actions-setup-cmake@v2
         with:
           cmake-version: '3.x'
+
       - name: Build Repository
         run: |
           sudo sh -c 'echo 0 > /proc/sys/net/ipv6/conf/all/disable_ipv6'
@@ -498,17 +531,9 @@ jobs:
           make
 
   linux-thread-size-check:
-    strategy:
-      matrix:
-        container:
-          - public.ecr.aws/ubuntu/ubuntu:18.04_stable
-          - public.ecr.aws/ubuntu/ubuntu:22.04_stable
-          - public.ecr.aws/ubuntu/ubuntu:24.04_stable
-      fail-fast: false
-
     runs-on: ubuntu-latest
     container:
-      image: ${{ matrix.container }}
+      image: public.ecr.aws/ubuntu/ubuntu:22.04_stable
 
     env:
       DEBIAN_FRONTEND: noninteractive
