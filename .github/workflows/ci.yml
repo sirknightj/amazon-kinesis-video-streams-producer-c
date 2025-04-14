@@ -525,8 +525,7 @@ jobs:
         working-directory: ./open-source/lib
         run: |
           set -x
-          readelf -d libcurl.so
-          ldd ./tst/producer_test
+          readelf -d libcurl.so | grep -i "runpath"
       - name: Run tests with expected failure
         run: |
           set +e
