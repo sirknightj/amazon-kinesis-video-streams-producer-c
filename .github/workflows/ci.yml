@@ -525,8 +525,8 @@ jobs:
         working-directory: ./open-source/lib
         run: |
           set -x
-          otool -l libcurl.so
           readelf -d libcurl.so
+          ldd ./tst/producer_test
       - name: Run tests with expected failure
         run: |
           set +e
