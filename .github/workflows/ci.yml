@@ -435,9 +435,8 @@ jobs:
           role-duration-seconds: 3600
 
       - name: Run tests
+        working-directory: ./build
         run: |
-          cd build
-          ulimit -c unlimited -S
           timeout --signal=SIGABRT 150m ./tst/producer_test --gtest_break_on_failure
 
   arm64-cross-compilation:
