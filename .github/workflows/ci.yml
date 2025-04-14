@@ -28,8 +28,9 @@ jobs:
         openssl:
           - preinstalled
           - from-source
+      fail-fast: false
 
-    name: ${{ matrix.cpu.name }} Mac-${{ matrix.compiler.name }}-preinstalled-openssl
+    name: ${{ matrix.cpu.name }} Mac-${{ matrix.compiler.name }}-${{ matrix.compiler.name }}-preinstalled-openssl
     runs-on: ${{ matrix.cpu.image }}
 
     permissions:
@@ -53,7 +54,7 @@ jobs:
 
       - name: Setup envs for including OpenSSL locally
         if: ${{ matrix.openssl == 'preinstalled' }}
-        run:
+        run: |
           OPENSSL_PATH=$(brew --prefix openssl@3)
           echo "LDFLAGS=-L$OPENSSL_PATH/lib" >> $GITHUB_ENV
           echo "CPPFLAGS=-I$OPENSSL_PATH/include" >> $GITHUB_ENV
