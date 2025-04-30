@@ -28,7 +28,7 @@ jobs:
       - name: Install deps
         run: |
           brew update
-          brew install mbedtls@2
+          brew install mbedtls@2 googletest
 
       - name: Setup cmake
         uses: jwlawson/actions-setup-cmake@v2
